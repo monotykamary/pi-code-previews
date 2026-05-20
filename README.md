@@ -25,7 +25,7 @@ pi install npm:pi-code-previews
 Install from GitHub:
 
 ```bash
-pi install git:github.com/mattleong/pi-code-previews
+pi install https://github.com/mattleong/pi-code-previews
 ```
 
 ## Usage
