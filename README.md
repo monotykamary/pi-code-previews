@@ -1,6 +1,17 @@
-# pi-code-previews
+<div align="center">
 
-Syntax-highlighted previews for pi's built-in tool calls.
+# 🎨 pi-code-previews
+
+**Syntax-highlighted previews for [pi](https://github.com/earendil-works/pi-coding-agent)'s built-in tool calls**
+
+_Every `bash`, `read`, `write`, `edit`, `grep`, `find`, and `ls` output — enhanced._
+
+[![pi extension](https://img.shields.io/badge/pi-extension-blueviolet)](https://github.com/earendil-works/pi-coding-agent)
+[![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
+</div>
+
+---
 
 `pi-code-previews` makes `bash`, `read`, `write`, `edit`, `grep`, `find`, and `ls` output easier to scan in the pi TUI without changing what the tools do. If another extension already owns one of those tools, `pi-code-previews` skips that preview instead of conflicting with it.
 
