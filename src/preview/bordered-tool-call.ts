@@ -194,12 +194,12 @@ export class BorderedToolCall implements Component {
   private frameLine(line: string, innerWidth: number, border: (value: string) => string): string {
     const truncated = truncateToWidth(line, innerWidth, "");
     const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
-    // FullWidthDiffText diff lines have an active diff background that extends
-    // to the end (no trailing \x1b[49m). Let the diff bg cover padding and
-    // the right margin space, then reset bg right before the border │.
-    // For non-diff lines, RESET_ANSI goes before padding to clear attributes.
-    const diffBgPrefix = /^\x1b\[48;2;\d+;\d+;\d+m/.exec(truncated);
-    if (diffBgPrefix) {
+    // Lines with an SGR background prefix have an active bg that extends to
+    // the end (no trailing \x1b[49m). Keep the bg covering padding and the
+    // right margin space, then reset bg right before the border │.
+    // For non-bg lines, RESET_ANSI goes before padding to clear attributes.
+    const hasBgPrefix = truncated.startsWith("\x1b[4");
+    if (hasBgPrefix) {
       return `${border("│")} ${truncated}${padding} \x1b[49m${border("│")}${RESET_ANSI}`;
     }
     return `${border("│")} ${truncated}${RESET_ANSI}${padding} ${border("│")}`;

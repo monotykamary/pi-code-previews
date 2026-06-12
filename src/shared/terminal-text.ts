@@ -7,6 +7,24 @@ export function escapeControlChars(text: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "�");
 }
 
+export function getBgAnsi(theme: unknown, key: string): string {
+  const themed = theme as { getBgAnsi?: (key: string) => string };
+  try {
+    return themed.getBgAnsi?.(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function withToolBackground(coloredLine: string, bg: string): string {
+  if (!bg || coloredLine.startsWith(bg)) return coloredLine;
+  const injected = coloredLine
+    .replace(/\x1b\[0m/g, `\x1b[0m${bg}`)
+    .replace(/\x1b\[39m/g, `\x1b[39m${bg}`)
+    .replace(/\x1b\[49m/g, `\x1b[49m${bg}`);
+  return `${bg}${injected}`;
+}
+
 const ANSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 

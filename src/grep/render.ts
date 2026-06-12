@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { getLanguageFromPath } from "@earendil-works/pi-coding-agent";
 import { expandPreviewTabs } from "../shared/preview-tabs";
-import { escapeControlChars, injectVisibleRanges } from "../shared/terminal-text";
+import { escapeControlChars, getBgAnsi, injectVisibleRanges, withToolBackground } from "../shared/terminal-text";
 import { isToolOutputNoticeLine } from "../shared/tool-output-notice";
 import { resolvePreviewLanguage } from "../syntax/language";
 import { renderHighlightedText } from "../syntax/shiki";
@@ -20,11 +20,12 @@ export function renderGrepOutputLines(
   invalidate?: () => void,
   options: { syntaxHighlight?: boolean } = {},
 ): string[] {
+  const bg = getBgAnsi(theme, "toolSuccessBg");
   const rendered: string[] = [];
   let currentPath = "";
   for (const rawLine of output.split("\n")) {
     if (!rawLine) {
-      rendered.push("");
+      rendered.push(theme.fg("toolOutput", " "));
       continue;
     }
     if (isToolOutputNoticeLine(rawLine)) {
@@ -44,7 +45,7 @@ export function renderGrepOutputLines(
       renderGrepParsedLine(parsed, theme, search, invalidate, options.syntaxHighlight !== false),
     );
   }
-  return rendered;
+  return bg ? rendered.map((line) => withToolBackground(line, bg)) : rendered;
 }
 
 export function parseGrepOutputLine(line: string): ParsedGrepOutputLine | undefined {
@@ -86,7 +87,7 @@ function renderGrepParsedLine(
   if (matchRanges.length > 0)
     highlighted = injectVisibleRanges(highlighted, matchRanges, {
       open: "\x1b[48;2;90;74;28m",
-      close: getToolBackground(theme) || "\x1b[49m",
+      close: getBgAnsi(theme, "toolSuccessBg") || "\x1b[49m",
       reopenAfterSgr: (sequence) => sequence === "\x1b[39m",
     });
   const paddedLineNumber = parsed.lineNumber.padStart(4);
@@ -114,11 +115,4 @@ function grepMatchRanges(
   return ranges;
 }
 
-function getToolBackground(theme: Theme): string {
-  const themed = theme as Theme & { getBgAnsi?: (key: string) => string };
-  try {
-    return themed.getBgAnsi?.("toolSuccessBg") ?? "";
-  } catch {
-    return "";
-  }
-}
+

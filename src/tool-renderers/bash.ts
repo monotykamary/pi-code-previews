@@ -6,7 +6,7 @@ import { createCodePreviewToolShell } from "../preview/tool-shell";
 import { codePreviewSettings } from "../settings/index";
 import { countLabel } from "../shared/format";
 import { getObjectValue } from "../shared/objects";
-import { escapeControlChars } from "../shared/terminal-text";
+import { escapeControlChars, getBgAnsi, withToolBackground } from "../shared/terminal-text";
 import { getFirstShellCommandName } from "../shell/command";
 import { renderHighlightedText } from "../syntax/shiki";
 import { getTextContent, isTruncated } from "../tool-data/results";
@@ -72,12 +72,13 @@ export function registerBash(pi: ExtensionAPI, cwd: string, options?: BashToolOp
         });
         if (hiddenPrelude) return hiddenPrelude;
         const output = trimSingleTrailingNewline(getTextContent(result.content));
+        const bg = getBgAnsi(theme, renderContext.isError ? "toolErrorBg" : "toolSuccessBg");
         const lines = output
-          ? output
-              .split("\n")
-              .map((line) =>
-                theme.fg(renderContext.isError ? "error" : "muted", escapeControlChars(line)),
-              )
+          ? output.split("\n").map((line) => {
+              const escaped = escapeControlChars(line);
+              const styled = theme.fg(renderContext.isError ? "error" : "muted", escaped || " ");
+              return bg ? withToolBackground(styled, bg) : styled;
+            })
           : [];
         const limit = expanded ? lines.length : 8;
         const preview = renderSelectedOutputLines(lines, limit, theme, (chunk) => chunk);

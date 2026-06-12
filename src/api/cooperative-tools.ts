@@ -7,7 +7,7 @@ import type {
 import { Container, Text, type Component } from "@earendil-works/pi-tui";
 import { getTextContent } from "../tool-data/results";
 import { codePreviewSettings, type ToolCallBackgroundMode } from "../settings/index";
-import { escapeControlChars } from "../shared/terminal-text";
+import { escapeControlChars, getBgAnsi, withToolBackground } from "../shared/terminal-text";
 import { createCodePreviewToolShell } from "../preview/tool-shell";
 
 export interface CodePreviewShellOptions {
@@ -83,9 +83,14 @@ function renderFallbackToolResult(
   const output = getTextContent(result.content);
   if (!output) return new Container();
   const color = isError ? "error" : options.isPartial ? "warning" : "toolOutput";
+  const bg = getBgAnsi(theme, isError ? "toolErrorBg" : "toolSuccessBg");
   const text = output
     .split("\n")
-    .map((line) => theme.fg(color, escapeControlChars(line)))
+    .map((line) => {
+      const escaped = escapeControlChars(line);
+      const styled = theme.fg(color, escaped || " ");
+      return bg ? withToolBackground(styled, bg) : styled;
+    })
     .join("\n");
   return new Text(text, 0, 0);
 }

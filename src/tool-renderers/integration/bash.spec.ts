@@ -183,3 +183,29 @@ test("registered bash renderer preserves whitespace-sensitive output", () => {
   );
   assert.doesNotMatch(blankOutput, /No output/);
 });
+
+test("registered bash renderer keeps blank lines renderable", () => {
+  process.env.CODE_PREVIEW_TOOLS = "bash";
+  const bash = findRenderer(registerRenderers(), "bash");
+  assert.ok(bash.renderResult);
+
+  const coloredTheme = {
+    ...testTheme(),
+    fg: (key: string, text: string) =>
+      ["muted", "error"].includes(key) ? `<${key}>${text}</${key}>` : text,
+  };
+
+  const rendered = renderComponent(
+    bash.renderResult(
+      { content: [{ type: "text", text: "line1\n\nline3" }] },
+      { expanded: true, isPartial: false },
+      coloredTheme,
+      { args: {}, isError: false, invalidate: () => undefined, state: {} },
+    ),
+  );
+  const lines = rendered.split("\n").map((l) => l.trimEnd());
+  assert.equal(lines.length, 3);
+  assert.equal(lines[0], "<muted>line1</muted>");
+  assert.equal(lines[1], "<muted> </muted>");
+  assert.equal(lines[2], "<muted>line3</muted>");
+});
