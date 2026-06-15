@@ -1,7 +1,12 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { getLanguageFromPath } from "@earendil-works/pi-coding-agent";
 import { expandPreviewTabs } from "../shared/preview-tabs";
-import { escapeControlChars, getBgAnsi, injectVisibleRanges, withToolBackground } from "../shared/terminal-text";
+import {
+  escapeControlChars,
+  getBgAnsi,
+  injectVisibleRanges,
+  withToolBackground,
+} from "../shared/terminal-text";
 import { isToolOutputNoticeLine } from "../shared/tool-output-notice";
 import { resolvePreviewLanguage } from "../syntax/language";
 import { renderHighlightedText } from "../syntax/shiki";
@@ -114,5 +119,3 @@ function grepMatchRanges(
   }
   return ranges;
 }
-
-
