@@ -3,6 +3,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Box, visibleWidth } from "@earendil-works/pi-tui";
 import { afterEach, beforeEach, test } from "vitest";
 import { codePreviewSettings, setCodePreviewSettings } from "../settings/index";
+import { initializeShiki } from "../syntax/shiki";
 import { renderComponent, stripAnsi, testTheme } from "../testing/render";
 import {
   FullWidthDiffText,
@@ -22,6 +23,10 @@ beforeEach(() => {
 
 afterEach(() => {
   setCodePreviewSettings(previousCodePreviewSettings);
+});
+
+afterEach(async () => {
+  await initializeShiki(previousCodePreviewSettings.shikiTheme);
 });
 
 test("summarizeDiff classifies replacements, insertions, and deletions by change group", () => {
@@ -48,6 +53,24 @@ test("plain diff escapes terminal control characters", () => {
   const rendered = renderPlainDiff("+1 hello \x1b[31mred\x00", testTheme(), 1);
   assert.doesNotMatch(rendered, /\x1b\[31m/);
   assert.match(rendered, /␛\[31mred�/);
+});
+
+test("syntax-highlighted diff carries comment state across multi-line block comments", async () => {
+  await initializeShiki(codePreviewSettings.shikiTheme);
+  // dark-plus colors TypeScript block comments with #6a9955 (38;2;106;153;85m).
+  // Tokenizing each diff line in isolation drops the open-comment state, so the
+  // continuation lines get re-tokenized as code (identifiers become 38;2;156;220;254m).
+  const diff = [
+    "+1 /** Append the thinking on/off + effort line to the detail pane, with a",
+    "+2  *  warning when the highlighted model can't reason (so the setting would",
+    "+3  *  be silently ignored by the describer). */",
+  ].join("\n");
+  const rendered = renderSyntaxHighlightedDiff(diff, "typescript", testTheme(), 3).split("\n");
+  assert.equal(rendered.length, 3);
+  for (const line of rendered) {
+    assert.match(line ?? "", /\x1b\[38;2;106;153;85m/);
+    assert.doesNotMatch(line ?? "", /\x1b\[38;2;156;220;254m/);
+  }
 });
 
 test("diff renderers honor limits at remove/add boundaries", () => {

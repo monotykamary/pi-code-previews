@@ -55,8 +55,13 @@ function renderDiff(diff: string, options: DiffRenderOptions): string {
   const lines = splitLinesLimited(diff, options.limit);
   const parsedLines = lines.map(parseDiffLine);
   const lineNumberWidth = diffLineNumberWidth(parsedLines);
+  const highlighted = highlightDiffLines(
+    parsedLines,
+    options.syntaxHighlight ? options.lang : undefined,
+    options.theme,
+    options.invalidate,
+  );
   const out: string[] = [];
-  const lang = options.syntaxHighlight ? options.lang : undefined;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
@@ -71,20 +76,17 @@ function renderDiff(diff: string, options: DiffRenderOptions): string {
       out.push(
         ...renderChangeBlock(
           block,
-          lang,
+          highlighted.slice(i, end),
           options.theme,
           lineNumberWidth,
           options.wordEmphasis,
-          options.invalidate,
         ),
       );
       i = end - 1;
       continue;
     }
 
-    out.push(
-      renderDiffParsedLine(parsed, lang, options.theme, lineNumberWidth, options.invalidate),
-    );
+    out.push(renderDiffParsedLine(parsed, highlighted[i], options.theme, lineNumberWidth));
   }
 
   return out.join("\n");
@@ -103,38 +105,32 @@ function renderSeparator(line: string, theme: Theme): string {
 
 function renderDiffParsedLine(
   parsed: ParsedDiffLine,
-  lang: string | undefined,
+  highlighted: string | undefined,
   theme: Theme,
   lineNumberWidth: number,
-  invalidate?: () => void,
 ): string {
-  const highlighted = highlightSingleLine(
-    expandPreviewTabs(parsed.content),
-    lang,
-    theme,
-    invalidate,
-  );
+  const content =
+    highlighted ?? theme.fg("toolOutput", escapeControlChars(expandPreviewTabs(parsed.content)));
   const lineNumber = formatDiffLineNumber(parsed.lineNumber, lineNumberWidth);
   if (parsed.kind === "+")
-    return `${DIFF_ADD_MARKER}${theme.fg("toolDiffAdded", `+${lineNumber} │ `)}${highlighted}`;
+    return `${DIFF_ADD_MARKER}${theme.fg("toolDiffAdded", `+${lineNumber} │ `)}${content}`;
   if (parsed.kind === "-")
-    return `${DIFF_REMOVE_MARKER}${theme.fg("toolDiffRemoved", `-${lineNumber} │ `)}${highlighted}`;
+    return `${DIFF_REMOVE_MARKER}${theme.fg("toolDiffRemoved", `-${lineNumber} │ `)}${content}`;
   return dimAnsi(
-    `${theme.fg("toolDiffContext", ` ${lineNumber} │ `)}${highlighted || theme.fg("toolDiffContext", "")}`,
+    `${theme.fg("toolDiffContext", ` ${lineNumber} │ `)}${content || theme.fg("toolDiffContext", "")}`,
   );
 }
 
 function renderChangeBlock(
   block: ParsedDiffLine[],
-  lang: string | undefined,
+  highlights: (string | undefined)[],
   theme: Theme,
   lineNumberWidth: number,
   wordEmphasis: DiffWordEmphasis,
-  invalidate?: () => void,
 ): string[] {
   const emphasis = changedLineEmphasis(block, wordEmphasis);
   return block.map((line, index) => {
-    const rendered = renderDiffParsedLine(line, lang, theme, lineNumberWidth, invalidate);
+    const rendered = renderDiffParsedLine(line, highlights[index], theme, lineNumberWidth);
     const match = emphasis.get(index);
     return match ? emphasizeChangedSpans(rendered, match.ranges, match.kind) : rendered;
   });
@@ -144,13 +140,37 @@ function dimAnsi(text: string): string {
   return `\x1b[2m${text}\x1b[22m`;
 }
 
-function highlightSingleLine(
-  line: string,
+// Highlight contiguous runs of code lines together so Shiki carries TextMate
+// grammar state across newlines. Tokenizing each diff line in isolation breaks
+// multi-line constructs (block comments, heredocs, triple-quoted strings, etc.)
+// because the opener on a previous line is never seen.
+function highlightDiffLines(
+  parsedLines: (ParsedDiffLine | null)[],
   lang: string | undefined,
   theme: Theme,
   invalidate?: () => void,
-): string {
-  return (
-    renderWithShiki(line, lang, invalidate)?.[0] ?? theme.fg("toolOutput", escapeControlChars(line))
+): (string | undefined)[] {
+  const result: (string | undefined)[] = Array.from(
+    { length: parsedLines.length },
+    () => undefined,
   );
+  if (!lang) return result;
+  let start = 0;
+  while (start < parsedLines.length) {
+    if (!parsedLines[start]) {
+      start++;
+      continue;
+    }
+    let end = start;
+    while (end < parsedLines.length && parsedLines[end]) end++;
+    const contents: string[] = [];
+    for (let i = start; i < end; i++) contents.push(expandPreviewTabs(parsedLines[i]!.content));
+    const rendered = renderWithShiki(contents.join("\n"), lang, invalidate);
+    if (rendered) {
+      for (let i = 0; i < contents.length; i++)
+        result[start + i] = rendered[i] ?? theme.fg("toolOutput", escapeControlChars(contents[i]!));
+    }
+    start = end;
+  }
+  return result;
 }
