@@ -1,5 +1,5 @@
-import { getSettingsListTheme } from "@earendil-works/pi-coding-agent";
-import { SettingsList } from "@earendil-works/pi-tui";
+import { DynamicBorder, getSettingsListTheme, type Theme } from "@earendil-works/pi-coding-agent";
+import { Container, SettingsList, type Component } from "@earendil-works/pi-tui";
 import { codePreviewSettings, setCodePreviewSettings, updateSetting } from "../../settings/index";
 import {
   flushSettingsSaveQueue,
@@ -12,12 +12,14 @@ import { initializeShiki } from "../../syntax/shiki";
 interface SettingsListControllerOptions {
   notify: (message: string, level: "info" | "warning") => void;
   done: () => void;
+  theme: Theme;
 }
 
 export function createCodePreviewSettingsList({
   notify,
   done,
-}: SettingsListControllerOptions): SettingsList {
+  theme,
+}: SettingsListControllerOptions): Component {
   let list: SettingsList;
   const handleSettingChange = (id: string, value: string) => {
     if (isSettingsGroupItemId(id)) {
@@ -55,8 +57,29 @@ export function createCodePreviewSettingsList({
         .catch(() => undefined)
         .finally(done);
     },
+    { enableSearch: true },
   );
-  return list;
+  return new BorderedSettingsList(list, theme);
+}
+
+class BorderedSettingsList extends Container {
+  constructor(
+    private readonly settingsList: SettingsList,
+    theme: Theme,
+  ) {
+    super();
+    this.addChild(new DynamicBorder((text) => theme.fg("border", text)));
+    this.addChild(this.settingsList);
+    this.addChild(new DynamicBorder((text) => theme.fg("border", text)));
+  }
+
+  handleInput(data: string): void {
+    this.settingsList.handleInput(data);
+  }
+
+  getSettingsList(): SettingsList {
+    return this.settingsList;
+  }
 }
 
 function syncSettingsListValues(

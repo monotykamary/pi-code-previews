@@ -118,7 +118,7 @@ test("settings command updates, saves, and notifies", async () => {
       notify: (message: string) => notifications.push(message),
       custom: async (factory: CustomFactory) =>
         new Promise<void>((resolve) => {
-          const list = factory(undefined, testTheme(), undefined, () => resolve());
+          const list = getSettingsList(factory(undefined, testTheme(), undefined, () => resolve()));
           (list as unknown as SettingsListInternals).onChange("readCollapsedLines", "20");
           (list as unknown as SettingsListInternals).onCancel();
         }),
@@ -134,7 +134,7 @@ test("settings command updates, saves, and notifies", async () => {
       notify: (message: string) => notifications.push(message),
       custom: async (factory: CustomFactory) =>
         new Promise<void>((resolve) => {
-          const list = factory(undefined, testTheme(), undefined, () => resolve());
+          const list = getSettingsList(factory(undefined, testTheme(), undefined, () => resolve()));
           (list as unknown as SettingsListInternals).onChange("resetToDefaults", "reset now");
           (list as unknown as SettingsListInternals).onCancel();
         }),
@@ -153,6 +153,11 @@ type CustomFactory = (
 interface SettingsListInternals {
   onChange(id: string, value: string): void;
   onCancel(): void;
+}
+
+function getSettingsList(component: Component): unknown {
+  const candidate = component as { getSettingsList?: () => unknown };
+  return typeof candidate.getSettingsList === "function" ? candidate.getSettingsList() : component;
 }
 
 function restoreEnv(name: string, value: string | undefined): void {
