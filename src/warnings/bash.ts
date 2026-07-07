@@ -14,6 +14,8 @@ const BASH_WARNINGS: BashWarning[] = [
   { label: "elevated privileges", pattern: /(^|[;&|]\s*)sudo\b/ },
   { label: "recursive permission change", pattern: /\bchmod\s+(?:-[\w-]*R|--recursive)\b/ },
   { label: "recursive ownership change", pattern: /\bchown\s+(?:-[\w-]*R|--recursive)\b/ },
+  { label: "searches entire filesystem", pattern: /\bfind\b(?:\s+-[\w-]+)*\s+\/+(?=\s|$)/ },
+  { label: "searches entire home directory", pattern: /\bfind\b(?:\s+-[\w-]+)*\s+~\/?(?=\s|$)/ },
   { label: "discards git changes", pattern: /\bgit\s+reset\s+--hard\b/ },
   { label: "removes untracked files", pattern: /\bgit\s+clean\s+-[\w-]*[fd][\w-]*\b/ },
   { label: "removes Docker data", pattern: /\bdocker\s+system\s+prune\b/ },

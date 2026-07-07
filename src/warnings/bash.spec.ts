@@ -13,5 +13,12 @@ test("getBashWarnings returns user-facing labels", () => {
     "discards git changes",
     "removes untracked files",
   ]);
+  assert.deepEqual(getBashWarnings("find /"), ["searches entire filesystem"]);
+  assert.deepEqual(getBashWarnings("find / -name foo"), ["searches entire filesystem"]);
+  assert.deepEqual(getBashWarnings("find -L /"), ["searches entire filesystem"]);
+  assert.deepEqual(getBashWarnings("find ~"), ["searches entire home directory"]);
+  assert.deepEqual(getBashWarnings("find ~/ -name foo"), ["searches entire home directory"]);
+  assert.deepEqual(getBashWarnings("find /home"), []);
+  assert.deepEqual(getBashWarnings("find ~/src"), []);
   assert.deepEqual(getBashWarnings("echo hi"), []);
 });
