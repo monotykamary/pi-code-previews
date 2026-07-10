@@ -1,5 +1,7 @@
+import { codePreviewSettings } from "../../settings/index";
 import type { DiffWordEmphasis } from "../../settings/types";
 import { injectVisibleRanges } from "../../shared/terminal-text";
+import { isLightShikiTheme } from "../../syntax/shiki";
 import type { ParsedDiffLine } from "../parse";
 import { analyzeChangedLineBlock } from "./change-block";
 import { shouldEmphasizeChangedPair } from "./emphasis";
@@ -31,7 +33,7 @@ export function emphasizeChangedSpans(
     line.slice(0, codeStart) +
     injectVisibleRanges(line.slice(codeStart), ranges, {
       open: wordEmphasis(kind),
-      close: "\x1b[22m\x1b[49m",
+      close: "\x1b[49m",
       reopenAfterSgr: (sequence) => sequence === "\x1b[39m" || sequence === "\x1b[22m",
     })
   );
@@ -50,5 +52,8 @@ function findCodeStart(line: string): number {
 }
 
 function wordEmphasis(kind: "add" | "remove"): string {
-  return kind === "add" ? "\x1b[48;2;64;132;82m\x1b[1m" : "\x1b[48;2;148;62;70m\x1b[1m";
+  if (isLightShikiTheme(codePreviewSettings.shikiTheme)) {
+    return kind === "add" ? "\x1b[48;2;194;209;194m" : "\x1b[48;2;216;182;182m";
+  }
+  return kind === "add" ? "\x1b[48;2;64;132;82m" : "\x1b[48;2;148;62;70m";
 }

@@ -234,8 +234,12 @@ export function normalizeShikiLanguage(lang: string): string {
   return normalizePreviewLanguageAlias(lang);
 }
 
+export function isLightShikiTheme(theme: string): boolean {
+  return shikiThemeTypes.get(theme) === "light";
+}
+
 function normalizeShikiContrast(ansi: string): string {
-  if (shikiThemeTypes.get(codePreviewSettings.shikiTheme) === "light") return ansi;
+  if (isLightShikiTheme(codePreviewSettings.shikiTheme)) return ansi;
   return ansi.replace(/\x1b\[([0-9;]*)m/g, (seq, params: string) =>
     isLowContrastFg(params) ? "\x1b[38;2;139;148;158m" : seq,
   );
