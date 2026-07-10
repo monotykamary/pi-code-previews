@@ -44,7 +44,9 @@ export function matchChangedLines(
   const tokenWeight = similarityTokenWeight(similarityDocuments);
   const { removedFeatures, addedFeatures } = similarityDocuments;
   const scores = removedFeatures.map((beforeTokens) =>
-    addedFeatures.map((afterTokens) => tokenSimilarity(beforeTokens, afterTokens, tokenWeight)),
+    addedFeatures.map((afterTokens) =>
+      tokenSimilarity(beforeTokens, afterTokens, tokenWeight, MIN_POSITIONAL_FALLBACK_PAIR_SCORE),
+    ),
   );
   const similarPairs = prefixAlignedPairs(
     removed.length,

@@ -16,13 +16,19 @@ export async function codePreviews(pi: ExtensionAPI) {
   registerSettingsCommand(pi);
 
   pi.on("session_start", async (_event, ctx) => {
+    const projectTrusted =
+      typeof ctx.isProjectTrusted === "function" ? ctx.isProjectTrusted() : true;
     try {
-      await loadCodePreviewSettings(ctx.cwd);
+      await loadCodePreviewSettings(ctx.cwd, projectTrusted);
       if (codePreviewSettings.syntaxHighlighting)
         void initializeShiki(codePreviewSettings.shikiTheme);
     } catch (error) {
       console.warn("[pi-code-previews] Failed to load settings.", error);
     }
-    registerToolRenderers(pi, ctx.cwd, { registeredTools, activatedTools });
+    registerToolRenderers(pi, ctx.cwd, {
+      registeredTools,
+      activatedTools,
+      projectTrusted,
+    });
   });
 }

@@ -72,20 +72,18 @@ export function registerBash(pi: ExtensionAPI, cwd: string, options?: BashToolOp
         });
         if (hiddenPrelude) return hiddenPrelude;
         const output = trimSingleTrailingNewline(getTextContent(result.content));
-        const lines = output
-          ? output
-              .split("\n")
-              .map((line) =>
-                theme.fg(renderContext.isError ? "error" : "muted", escapeControlChars(line)),
-              )
-          : [];
-        const limit = expanded ? lines.length : 8;
-        const preview = renderSelectedOutputLines(lines, limit, theme, (chunk) => chunk);
+        const rawLines = output ? output.split("\n") : [];
+        const limit = expanded ? rawLines.length : 8;
+        const preview = renderSelectedOutputLines(rawLines, limit, theme, (chunk) =>
+          chunk.map((line) =>
+            theme.fg(renderContext.isError ? "error" : "muted", escapeControlChars(line)),
+          ),
+        );
         let text = preview.lines.length
           ? withSecretWarning(output, theme, preview.lines.join("\n"))
           : theme.fg("muted", "No output");
         if (preview.hidden > 0)
-          text += showingFooter(theme, preview.shown, lines.length, "output lines");
+          text += showingFooter(theme, preview.shown, rawLines.length, "output lines");
         if (isTruncated(result.details)) text += previewFooter(theme, "Output truncated by bash");
         const fullOutputPath = getObjectValue(result.details, "fullOutputPath");
         if (typeof fullOutputPath === "string")

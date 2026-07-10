@@ -3,7 +3,12 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "vitest";
-import { getWriteDiffSkipReason, MAX_WRITE_DIFF_BYTES, readExistingFileForPreview } from "./diff";
+import {
+  getWriteDiffSkipReason,
+  MAX_WRITE_DIFF_BYTES,
+  readExistingFileForPreview,
+  shouldSkipWriteDiffComplexity,
+} from "./diff";
 import { resolvePreviewPath } from "../paths/resolve";
 
 test("resolvePreviewPath mirrors pi path expansion", () => {
@@ -43,4 +48,15 @@ test("readExistingFileForPreview returns bounded previous content", async () => 
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("write diff complexity skips rewrites but keeps localized changes", () => {
+  const beforeRewrite = Array.from({ length: 2_000 }, (_, index) => `before ${index}`).join("\n");
+  const afterRewrite = Array.from({ length: 2_000 }, (_, index) => `after ${index}`).join("\n");
+  assert.equal(shouldSkipWriteDiffComplexity(beforeRewrite, afterRewrite), true);
+
+  const lines = Array.from({ length: 10_000 }, (_, index) => `line ${index}`);
+  const beforeLocalized = lines.join("\n");
+  lines[5_000] = "changed";
+  assert.equal(shouldSkipWriteDiffComplexity(beforeLocalized, lines.join("\n")), false);
 });

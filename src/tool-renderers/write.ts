@@ -24,6 +24,7 @@ import {
   getWriteDiffSkipReason,
   readExistingFileForPreview,
   shouldSkipWriteDiffBytes,
+  shouldSkipWriteDiffComplexity,
 } from "../write/diff";
 import {
   executeWriteWithPreview,
@@ -49,9 +50,9 @@ export function registerWrite(pi: ExtensionAPI, cwd: string) {
       if (!path || typeof content !== "string") {
         const before = path ? await readExistingFileForPreview(path, cwd, "") : undefined;
         const result = await originalWrite.execute(toolCallId, params, signal, onUpdate, ctx);
-        return withCodePreviewBeforeWrite(result, before);
+        return withCodePreviewBeforeWrite(result, before, toolCallId);
       }
-      return executeWriteWithPreview(path, content, cwd, signal);
+      return executeWriteWithPreview(toolCallId, path, content, cwd, signal);
     },
 
     renderCall(args, theme, context) {
@@ -108,8 +109,13 @@ export function registerWrite(pi: ExtensionAPI, cwd: string) {
         const path = getPathArg(renderContext.args);
         const content =
           typeof renderContext.args?.content === "string" ? renderContext.args.content : "";
-        const before = getCodePreviewBeforeWrite(result.details);
+        const stateKey = "codePreviewWriteBeforeSnapshot";
+        const before = Object.hasOwn(renderContext.state, stateKey)
+          ? renderContext.state[stateKey]
+          : getCodePreviewBeforeWrite(renderContext.toolCallId, result.details);
+        renderContext.state[stateKey] = before;
         const beforeContent = getObjectValue(before, "content");
+        const beforeKind = getObjectValue(before, "kind");
         const skipReason = getWriteDiffSkipReason(before, content);
         if (skipReason)
           return new Text(
@@ -135,6 +141,14 @@ export function registerWrite(pi: ExtensionAPI, cwd: string) {
               0,
             );
           }
+          if (shouldSkipWriteDiffComplexity(beforeContent, content)) {
+            return new Text(
+              theme.fg("success", "✓ Write applied") +
+                theme.fg("muted", " · diff skipped for complex rewrite"),
+              0,
+              0,
+            );
+          }
           const render = () =>
             renderWriteDiffPreview(
               beforeContent,
@@ -145,7 +159,14 @@ export function registerWrite(pi: ExtensionAPI, cwd: string) {
               renderContext.invalidate,
             );
           const source = `${beforeContent}\0${content}`;
-          const previewKey = diffPreviewCacheKey("write-result", source, path, expanded, theme);
+          const previewKey = diffPreviewCacheKey(
+            "write-result",
+            source,
+            path,
+            expanded,
+            theme,
+            codePreviewSettings.writeCollapsedLines,
+          );
           return cachedAsyncPreview(
             renderContext.state,
             "writeResultPreviewKey",
@@ -160,6 +181,13 @@ export function registerWrite(pi: ExtensionAPI, cwd: string) {
         }
         if (typeof beforeContent === "string")
           return new Text(theme.fg("muted", "✓ Write applied · no changes"), 0, 0);
+        if (beforeKind === "content")
+          return new Text(
+            theme.fg("success", "✓ Write applied") +
+              theme.fg("muted", " · previous content unavailable"),
+            0,
+            0,
+          );
         return new Text(
           theme.fg("success", `✓ New file (${countLabel(countContentLines(content), "line")})`),
           0,
@@ -230,7 +258,7 @@ function renderWriteDiffPreview(
   const limit = diffPreviewLineLimit(
     summary.totalLines,
     expanded,
-    codePreviewSettings.editCollapsedLines,
+    codePreviewSettings.writeCollapsedLines,
   );
   const header = `${theme.fg("success", "✓ Write applied")} ${theme.fg("muted", describeDiffShape(summary))}${diffSummarySeparator(theme)}${theme.fg("success", `+${summary.additions}`)} ${theme.fg("error", `-${summary.removals}`)}\n`;
   return createDiffPreviewText(diff, lang, theme, limit, {

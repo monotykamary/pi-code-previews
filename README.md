@@ -157,14 +157,25 @@ export default async function myExtension(pi) {
 }
 ```
 
-This preserves the original tool definition and only decorates rendering. If an extension imports `pi-code-previews`, it should list it in `dependencies` so users do not need to install it separately.
+This preserves the original tool definition and only decorates rendering. With no arguments,
+`loadCodePreviewSettings()` reads global settings only. To honor project-local settings, reload
+them from `session_start` after Pi has made its trust decision:
+
+```ts
+pi.on("session_start", async (_event, ctx) => {
+  await loadCodePreviewSettings(ctx.cwd, ctx.isProjectTrusted());
+});
+```
+
+If an extension imports `pi-code-previews`, it should list it in `dependencies` so users do not
+need to install it separately.
 
 ### Prompt for extension authors
 
 Give this to an agent working on another pi extension:
 
 ```text
-Add pi-code-previews support to this extension. Install it as a runtime dependency with the package manager this project uses, e.g. `npm install pi-code-previews`. Import `withCodePreviewShell` and `loadCodePreviewSettings` from `pi-code-previews`, load settings once before tool registration, and wrap this extension's own tool definitions with `withCodePreviewShell(...)` before `pi.registerTool(...)`. Do not wrap tools owned by other extensions. Run checks.
+Add pi-code-previews support to this extension. Install it as a runtime dependency with the package manager this project uses, e.g. `npm install pi-code-previews`. Import `withCodePreviewShell` and `loadCodePreviewSettings` from `pi-code-previews`, load global settings once before tool registration, and wrap this extension's own tool definitions with `withCodePreviewShell(...)` before `pi.registerTool(...)`. If project settings are needed, reload them from `session_start` with `loadCodePreviewSettings(ctx.cwd, ctx.isProjectTrusted())`. Do not wrap tools owned by other extensions. Run checks.
 ```
 
 ## Screenshots

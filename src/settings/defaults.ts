@@ -1,4 +1,4 @@
-import { parsePositiveInteger, positiveEnvInteger } from "../config/env";
+import { booleanEnv, parsePositiveInteger, positiveEnvInteger } from "../config/env";
 import { ALL_CODE_PREVIEW_TOOLS } from "../tools/names";
 import {
   isBundledThemeName,
@@ -20,23 +20,23 @@ export const defaultCodePreviewSettings: CodePreviewSettings = {
   diffIntensity: envDiffIntensity("CODE_PREVIEW_DIFF_INTENSITY", "subtle"),
   wordEmphasis: envDiffWordEmphasis("CODE_PREVIEW_WORD_EMPHASIS", "all"),
   toolCallBackground: envToolCallBackgroundMode("CODE_PREVIEW_TOOL_CALL_BACKGROUND", "on"),
-  toolCallTiming: envBoolean("CODE_PREVIEW_TOOL_CALL_TIMING", true),
+  toolCallTiming: booleanEnv("CODE_PREVIEW_TOOL_CALL_TIMING", true),
   readCollapsedLines: positiveEnvInteger("CODE_PREVIEW_READ_LINES", 10),
-  readContentPreview: envBoolean("CODE_PREVIEW_READ_CONTENT", true),
-  writeContentPreview: envBoolean("CODE_PREVIEW_WRITE_CONTENT", true),
+  readContentPreview: booleanEnv("CODE_PREVIEW_READ_CONTENT", true),
+  writeContentPreview: booleanEnv("CODE_PREVIEW_WRITE_CONTENT", true),
   writeCollapsedLines: positiveEnvInteger("CODE_PREVIEW_WRITE_LINES", 10),
-  editDiffPreview: envBoolean("CODE_PREVIEW_EDIT_DIFF", true),
+  editDiffPreview: booleanEnv("CODE_PREVIEW_EDIT_DIFF", true),
   editCollapsedLines: envEditLines("CODE_PREVIEW_EDIT_LINES", 160),
   grepCollapsedLines: positiveEnvInteger("CODE_PREVIEW_GREP_LINES", 15),
-  grepResultPreview: envBoolean("CODE_PREVIEW_GREP_RESULTS", true),
-  findResultPreview: envBoolean("CODE_PREVIEW_FIND_RESULTS", true),
-  lsResultPreview: envBoolean("CODE_PREVIEW_LS_RESULTS", true),
+  grepResultPreview: booleanEnv("CODE_PREVIEW_GREP_RESULTS", true),
+  findResultPreview: booleanEnv("CODE_PREVIEW_FIND_RESULTS", true),
+  lsResultPreview: booleanEnv("CODE_PREVIEW_LS_RESULTS", true),
   pathListCollapsedLines: positiveEnvInteger("CODE_PREVIEW_PATH_LIST_LINES", 20),
-  readLineNumbers: envBoolean("CODE_PREVIEW_READ_LINE_NUMBERS", true),
-  bashResultPreview: envBoolean("CODE_PREVIEW_BASH_RESULTS", true),
-  bashWarnings: envBoolean("CODE_PREVIEW_BASH_WARNINGS", true),
-  syntaxHighlighting: envBoolean("CODE_PREVIEW_SYNTAX", true),
-  secretWarnings: envBoolean("CODE_PREVIEW_SECRET_WARNINGS", true),
+  readLineNumbers: booleanEnv("CODE_PREVIEW_READ_LINE_NUMBERS", true),
+  bashResultPreview: booleanEnv("CODE_PREVIEW_BASH_RESULTS", true),
+  bashWarnings: booleanEnv("CODE_PREVIEW_BASH_WARNINGS", true),
+  syntaxHighlighting: booleanEnv("CODE_PREVIEW_SYNTAX", true),
+  secretWarnings: booleanEnv("CODE_PREVIEW_SECRET_WARNINGS", true),
   pathIcons: envPathIconMode("CODE_PREVIEW_PATH_ICONS", "unicode"),
   tools: [...ALL_CODE_PREVIEW_TOOLS],
 };
@@ -44,12 +44,6 @@ export const defaultCodePreviewSettings: CodePreviewSettings = {
 function envTheme(name: string, fallback: string): string {
   const value = process.env[name];
   return isBundledThemeName(value) ? value : fallback;
-}
-
-function envBoolean(name: string, fallback: boolean): boolean {
-  const value = process.env[name]?.toLowerCase();
-  if (value === undefined) return fallback;
-  return value === "1" || value === "true" || value === "on" || value === "yes";
 }
 
 function envEditLines(name: string, fallback: number | "all"): number | "all" {

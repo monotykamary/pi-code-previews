@@ -4,7 +4,7 @@ export function escapeControlChars(text: string): string {
   return text
     .replace(/\x1b/g, "␛")
     .replace(/\r/g, "␍")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "�");
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g, "�");
 }
 
 const ANSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
@@ -97,6 +97,12 @@ export function wrapAnsiToWidth(
     for (const { segment } of segmenter.segment(plain)) {
       const segmentWidth = visibleWidth(segment);
       if (rowWidth > 0 && rowWidth + segmentWidth > width && !pushRow()) return rows;
+      // A continuation prefix can leave fewer cells than the next grapheme needs.
+      // Drop the prefix for that row rather than truncating the grapheme away.
+      if (rowWidth > 0 && rowWidth + segmentWidth > width) {
+        row = state;
+        rowWidth = 0;
+      }
       if (segmentWidth > width && rowWidth === 0) {
         const clipped = truncateToWidth(segment, width, "");
         if (clipped) {

@@ -57,6 +57,9 @@ function renderDiff(diff: string, options: DiffRenderOptions): string {
   const lineNumberWidth = diffLineNumberWidth(parsedLines);
   const out: string[] = [];
   const lang = options.syntaxHighlight ? options.lang : undefined;
+  const highlightedLines = lang
+    ? highlightDiffLineRuns(parsedLines, lang, options.invalidate)
+    : parsedLines.map(() => undefined);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
@@ -71,20 +74,17 @@ function renderDiff(diff: string, options: DiffRenderOptions): string {
       out.push(
         ...renderChangeBlock(
           block,
-          lang,
+          highlightedLines.slice(i, end),
           options.theme,
           lineNumberWidth,
           options.wordEmphasis,
-          options.invalidate,
         ),
       );
       i = end - 1;
       continue;
     }
 
-    out.push(
-      renderDiffParsedLine(parsed, lang, options.theme, lineNumberWidth, options.invalidate),
-    );
+    out.push(renderDiffParsedLine(parsed, highlightedLines[i], options.theme, lineNumberWidth));
   }
 
   return out.join("\n");
@@ -103,38 +103,32 @@ function renderSeparator(line: string, theme: Theme): string {
 
 function renderDiffParsedLine(
   parsed: ParsedDiffLine,
-  lang: string | undefined,
+  highlighted: string | undefined,
   theme: Theme,
   lineNumberWidth: number,
-  invalidate?: () => void,
 ): string {
-  const highlighted = highlightSingleLine(
-    expandPreviewTabs(parsed.content),
-    lang,
-    theme,
-    invalidate,
-  );
+  const rendered =
+    highlighted ?? theme.fg("toolOutput", escapeControlChars(expandPreviewTabs(parsed.content)));
   const lineNumber = formatDiffLineNumber(parsed.lineNumber, lineNumberWidth);
   if (parsed.kind === "+")
-    return `${DIFF_ADD_MARKER}${theme.fg("toolDiffAdded", `+${lineNumber} │ `)}${highlighted}`;
+    return `${DIFF_ADD_MARKER}${theme.fg("toolDiffAdded", `+${lineNumber} │ `)}${rendered}`;
   if (parsed.kind === "-")
-    return `${DIFF_REMOVE_MARKER}${theme.fg("toolDiffRemoved", `-${lineNumber} │ `)}${highlighted}`;
+    return `${DIFF_REMOVE_MARKER}${theme.fg("toolDiffRemoved", `-${lineNumber} │ `)}${rendered}`;
   return dimAnsi(
-    `${theme.fg("toolDiffContext", ` ${lineNumber} │ `)}${highlighted || theme.fg("toolDiffContext", "")}`,
+    `${theme.fg("toolDiffContext", ` ${lineNumber} │ `)}${rendered || theme.fg("toolDiffContext", "")}`,
   );
 }
 
 function renderChangeBlock(
   block: ParsedDiffLine[],
-  lang: string | undefined,
+  highlightedLines: Array<string | undefined>,
   theme: Theme,
   lineNumberWidth: number,
   wordEmphasis: DiffWordEmphasis,
-  invalidate?: () => void,
 ): string[] {
   const emphasis = changedLineEmphasis(block, wordEmphasis);
   return block.map((line, index) => {
-    const rendered = renderDiffParsedLine(line, lang, theme, lineNumberWidth, invalidate);
+    const rendered = renderDiffParsedLine(line, highlightedLines[index], theme, lineNumberWidth);
     const match = emphasis.get(index);
     return match ? emphasizeChangedSpans(rendered, match.ranges, match.kind) : rendered;
   });
@@ -144,13 +138,30 @@ function dimAnsi(text: string): string {
   return `\x1b[2m${text}\x1b[22m`;
 }
 
-function highlightSingleLine(
-  line: string,
-  lang: string | undefined,
-  theme: Theme,
+function highlightDiffLineRuns(
+  lines: Array<ParsedDiffLine | null>,
+  lang: string,
   invalidate?: () => void,
-): string {
-  return (
-    renderWithShiki(line, lang, invalidate)?.[0] ?? theme.fg("toolOutput", escapeControlChars(line))
-  );
+): Array<string | undefined> {
+  const highlighted: Array<string | undefined> = lines.map(() => undefined);
+  let start = 0;
+  while (start < lines.length) {
+    const first = lines[start];
+    if (!first) {
+      start++;
+      continue;
+    }
+    let end = start + 1;
+    while (end < lines.length && lines[end]?.kind === first.kind) end++;
+    const source = lines
+      .slice(start, end)
+      .map((line) => expandPreviewTabs(line?.content ?? ""))
+      .join("\n");
+    const rendered = renderWithShiki(source, lang, invalidate);
+    if (rendered) {
+      for (let index = start; index < end; index++) highlighted[index] = rendered[index - start];
+    }
+    start = end;
+  }
+  return highlighted;
 }

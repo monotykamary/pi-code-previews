@@ -3,8 +3,11 @@ import { cloneCodePreviewSettings, codePreviewSettings, setCodePreviewSettings }
 import { loadSettingsFromDisk } from "./store";
 import type { CodePreviewSettings } from "./types";
 
-export async function loadCodePreviewSettings(projectCwd?: string): Promise<CodePreviewSettings> {
-  const savedSettings = await loadSettingsFromDisk({ projectCwd });
+export async function loadCodePreviewSettings(
+  projectCwd?: string,
+  projectTrusted = false,
+): Promise<CodePreviewSettings> {
+  const savedSettings = await loadSettingsFromDisk({ projectCwd, projectTrusted });
   setCodePreviewSettings(savedSettings ?? defaultCodePreviewSettings);
   return cloneCodePreviewSettings(codePreviewSettings);
 }

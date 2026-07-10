@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { afterEach, test } from "vitest";
 import { codePreviewSettings, defaultCodePreviewSettings, setCodePreviewSettings } from "./index";
 import { loadCodePreviewSettings } from "./bootstrap";
+import { queueSettingsSave } from "./persistence";
 import {
   extractCodePreviewSettings,
   getSettingsPath,
@@ -126,7 +127,7 @@ test("loadSettingsFromDisk merges settings in precedence order", async () => {
     pathListCollapsedLines: 44,
   });
 
-  const loaded = await loadSettingsFromDisk({ projectCwd: project });
+  const loaded = await loadSettingsFromDisk({ projectCwd: project, projectTrusted: true });
   assert.equal(loaded?.readCollapsedLines, 16);
   assert.equal(loaded?.writeCollapsedLines, 21);
   assert.equal(loaded?.writeContentPreview, false);
@@ -136,6 +137,60 @@ test("loadSettingsFromDisk merges settings in precedence order", async () => {
   assert.equal(loaded?.lsResultPreview, false);
   assert.equal(loaded?.bashResultPreview, false);
   assert.equal(loaded?.pathListCollapsedLines, 44);
+});
+
+test("saving a global change does not copy project defaults into other projects", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-global-overrides-"));
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const firstProject = join(root, "first");
+  const secondProject = join(root, "second");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(firstProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 77 },
+  });
+  await writeJson(join(secondProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 22 },
+  });
+
+  const first = await loadSettingsFromDisk({ projectCwd: firstProject, projectTrusted: true });
+  assert.ok(first);
+  await queueSettingsSave({ ...first, shikiTheme: "github-dark" });
+
+  const saved = JSON.parse(await readFile(join(agentDir, "code-previews.json"), "utf8"));
+  assert.deepEqual(saved, { shikiTheme: "github-dark" });
+  const second = await loadSettingsFromDisk({ projectCwd: secondProject, projectTrusted: true });
+  assert.equal(second?.readCollapsedLines, 22);
+  assert.equal(second?.shikiTheme, "github-dark");
+});
+
+test("saving an unrelated change preserves existing explicit global overrides", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-preserve-overrides-"));
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const firstProject = join(root, "first");
+  const secondProject = join(root, "second");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(firstProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 77 },
+  });
+  await writeJson(join(secondProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 22 },
+  });
+  await writeJson(join(agentDir, "code-previews.json"), { readCollapsedLines: 77 });
+
+  const first = await loadSettingsFromDisk({ projectCwd: firstProject, projectTrusted: true });
+  assert.ok(first);
+  await queueSettingsSave({ ...first, shikiTheme: "github-dark" });
+
+  const saved = JSON.parse(await readFile(join(agentDir, "code-previews.json"), "utf8"));
+  assert.deepEqual(saved, { readCollapsedLines: 77, shikiTheme: "github-dark" });
+  const second = await loadSettingsFromDisk({ projectCwd: secondProject, projectTrusted: true });
+  assert.equal(second?.readCollapsedLines, 77);
 });
 
 test("loadSettingsFromDisk uses process cwd when project cwd is omitted", async () => {
@@ -154,7 +209,7 @@ test("loadSettingsFromDisk uses process cwd when project cwd is omitted", async 
     codePreview: { readCollapsedLines: 23 },
   });
 
-  const loaded = await loadSettingsFromDisk();
+  const loaded = await loadSettingsFromDisk({ projectTrusted: true });
   assert.equal(loaded?.readCollapsedLines, 23);
 });
 
@@ -179,9 +234,34 @@ test("loadSettingsFromDisk uses explicit project cwd instead of process cwd", as
     codePreview: { readCollapsedLines: 99, writeCollapsedLines: 88 },
   });
 
-  const loaded = await loadSettingsFromDisk({ projectCwd: targetProject });
+  const loaded = await loadSettingsFromDisk({
+    projectCwd: targetProject,
+    projectTrusted: true,
+  });
   assert.equal(loaded?.readCollapsedLines, 24);
   assert.equal(loaded?.writeCollapsedLines, defaultCodePreviewSettings.writeCollapsedLines);
+});
+
+test("loadCodePreviewSettings only reads project settings when the project is trusted", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-project-trust-"));
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const project = join(root, "project");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(agentDir, "settings.json"), {
+    codePreview: { readCollapsedLines: 31 },
+  });
+  await writeJson(join(project, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 99 },
+  });
+
+  const untrusted = await loadCodePreviewSettings(project);
+  assert.equal(untrusted.readCollapsedLines, 31);
+
+  const trusted = await loadCodePreviewSettings(project, true);
+  assert.equal(trusted.readCollapsedLines, 99);
 });
 
 test("loadCodePreviewSettings resets to defaults when no settings files exist", async () => {

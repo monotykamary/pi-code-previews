@@ -15,6 +15,7 @@ export interface RegisterToolRenderersOptions {
   registeredTools?: Set<CodePreviewToolName>;
   activatedTools?: Set<CodePreviewToolName>;
   toolOptions?: BuiltinToolOptions;
+  projectTrusted?: boolean;
 }
 
 type ToolRendererRegistration = (
@@ -41,7 +42,8 @@ export function registerToolRenderers(
   const enabledTools = getEnabledCodePreviewTools();
   resetCodePreviewToolStatuses(enabledTools);
   const existingTools = getExistingToolsByName(pi);
-  const toolOptions = options.toolOptions ?? getBuiltinToolOptions(cwd);
+  const toolOptions =
+    options.toolOptions ?? getBuiltinToolOptions(cwd, options.projectTrusted ?? false);
   const activePreviewTools = new Set<CodePreviewToolName>();
 
   for (const tool of ALL_CODE_PREVIEW_TOOLS) {

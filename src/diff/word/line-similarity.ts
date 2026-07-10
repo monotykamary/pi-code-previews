@@ -114,10 +114,14 @@ export function tokenSimilarity(
   beforeTokens: string[],
   afterTokens: string[],
   weight: SimilarityTokenWeight = tokenWeight,
+  minimumRelevantSimilarity = 0,
 ): number {
   if (beforeTokens.length === 0 || afterTokens.length === 0)
     return beforeTokens.length === afterTokens.length ? 1 : 0;
   const bagSimilarity = unorderedTokenSimilarity(beforeTokens, afterTokens, weight);
+  // Ordered overlap cannot exceed multiset overlap. Avoid its dynamic program when
+  // the upper bound is already below the caller's minimum useful score.
+  if (bagSimilarity < minimumRelevantSimilarity) return bagSimilarity;
   const orderedSimilarity = orderedTokenSimilarity(beforeTokens, afterTokens, weight);
   if (orderedSimilarity === undefined) return bagSimilarity;
   return Math.max(

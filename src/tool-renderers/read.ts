@@ -9,7 +9,7 @@ import { escapeControlChars } from "../shared/terminal-text";
 import { resolvePreviewLanguage } from "../syntax/language";
 import { normalizeShikiLanguage } from "../syntax/shiki";
 import { getPathArg, getReadStartLine } from "../tool-data/args";
-import { getTextContent, isTruncated } from "../tool-data/results";
+import { getTextContent, isTruncated, splitReadContinuationNotice } from "../tool-data/results";
 import { renderContentPreview } from "./shared/content-preview";
 import { renderHiddenPreviewPrelude, renderResultPrelude } from "./shared/result-prelude";
 
@@ -68,13 +68,19 @@ export function registerRead(pi: ExtensionAPI, cwd: string, options?: ReadToolOp
         });
         if (hiddenPrelude) return hiddenPrelude;
 
+        const truncated = isTruncated(result.details);
+        const { content, notice } =
+          truncated || typeof renderContext.args?.limit === "number"
+            ? splitReadContinuationNotice(firstText)
+            : { content: firstText };
+
         const lang = resolvePreviewLanguage({
           path,
-          content: firstText,
+          content,
           piLanguage: getLanguageFromPath(path),
         });
         const preview = renderContentPreview({
-          content: firstText,
+          content,
           limit: expanded ? 0 : codePreviewSettings.readCollapsedLines,
           lang,
           theme,
@@ -86,7 +92,8 @@ export function registerRead(pi: ExtensionAPI, cwd: string, options?: ReadToolOp
           skipHighlightLabel: "Syntax highlighting skipped for large file",
         });
         let text = preview.text;
-        if (isTruncated(result.details)) text += previewFooter(theme, "Output truncated by read");
+        if (notice) text += previewFooter(theme, notice);
+        else if (truncated) text += previewFooter(theme, "Output truncated by read");
         return new Text(text, 0, 0);
       });
     },

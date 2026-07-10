@@ -9,6 +9,14 @@ import { cloneCodePreviewSettings } from "./state";
 import type { CodePreviewSettings } from "./types";
 import { normalizeSettings } from "./values";
 
+export type SettingsSaveContext = {
+  baseline: CodePreviewSettings;
+  loaded: CodePreviewSettings;
+  globalOverrides: Record<string, unknown>;
+};
+
+let settingsSaveContext = defaultSettingsSaveContext();
+
 export function getSettingsPath(): string {
   return join(getAgentDir(), "code-previews.json");
 }
@@ -23,6 +31,7 @@ function getLegacySettingsPath(): string {
 
 export type LoadSettingsOptions = {
   projectCwd?: string;
+  projectTrusted?: boolean;
 };
 
 export async function loadSettingsFromDisk(
@@ -30,32 +39,101 @@ export async function loadSettingsFromDisk(
 ): Promise<CodePreviewSettings | undefined> {
   let loaded = false;
   let effective = cloneCodePreviewSettings(defaultCodePreviewSettings);
-  const projectCwd = options.projectCwd ?? process.cwd();
-  const settingsPaths = [
+  const settingsPath = getSettingsPath();
+  const baselinePaths = [
     join(homedir(), ".pi", "settings.json"),
     join(getLegacyAgentDir(), "settings.json"),
     join(getAgentDir(), "settings.json"),
-    join(projectCwd, ".pi", "settings.json"),
+    ...(options.projectTrusted
+      ? [join(options.projectCwd ?? process.cwd(), ".pi", "settings.json")]
+      : []),
     getLegacySettingsPath(),
-    getSettingsPath(),
-  ];
-  for (const settingsPath of new Set(settingsPaths)) {
-    try {
-      const content = await readFile(settingsPath, "utf8");
-      effective = normalizeSettings(extractCodePreviewSettings(JSON.parse(content)), effective);
-      loaded = true;
-    } catch (error) {
-      if (isFileNotFound(error)) continue;
-      console.warn(`[pi-code-previews] Failed to load settings from ${settingsPath}.`, error);
-    }
+  ].filter((candidate) => candidate !== settingsPath);
+  for (const candidate of new Set(baselinePaths)) {
+    const next = await loadSettingsFile(candidate, effective);
+    if (!next) continue;
+    effective = next.settings;
+    loaded = true;
   }
+
+  const baseline = cloneCodePreviewSettings(effective);
+  const globalSettings = await loadSettingsFile(settingsPath, effective);
+  if (globalSettings) {
+    effective = globalSettings.settings;
+    loaded = true;
+  }
+  settingsSaveContext = {
+    baseline,
+    loaded: cloneCodePreviewSettings(effective),
+    globalOverrides: { ...globalSettings?.data },
+  };
   return loaded ? effective : undefined;
 }
 
-export async function saveSettingsToDisk(settings: CodePreviewSettings): Promise<void> {
+export function getSettingsSaveContext(): SettingsSaveContext {
+  return {
+    baseline: cloneCodePreviewSettings(settingsSaveContext.baseline),
+    loaded: cloneCodePreviewSettings(settingsSaveContext.loaded),
+    globalOverrides: { ...settingsSaveContext.globalOverrides },
+  };
+}
+
+export async function saveSettingsToDisk(
+  settings: CodePreviewSettings,
+  context: SettingsSaveContext = defaultSettingsSaveContext(),
+): Promise<void> {
   const settingsPath = getSettingsPath();
   await mkdir(dirname(settingsPath), { recursive: true });
-  await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  await writeFile(
+    settingsPath,
+    `${JSON.stringify(settingsOverrides(settings, context), null, 2)}\n`,
+    "utf8",
+  );
+}
+
+async function loadSettingsFile(
+  settingsPath: string,
+  fallback: CodePreviewSettings,
+): Promise<{ data: Record<string, unknown>; settings: CodePreviewSettings } | undefined> {
+  try {
+    const content = await readFile(settingsPath, "utf8");
+    const data = extractCodePreviewSettings(JSON.parse(content));
+    return { data, settings: normalizeSettings(data, fallback) };
+  } catch (error) {
+    if (!isFileNotFound(error))
+      console.warn(`[pi-code-previews] Failed to load settings from ${settingsPath}.`, error);
+    return undefined;
+  }
+}
+
+function settingsOverrides(
+  settings: CodePreviewSettings,
+  context: SettingsSaveContext,
+): Record<string, unknown> {
+  const overrides = { ...context.globalOverrides };
+  for (const key of CODE_PREVIEW_SETTING_KEYS) {
+    const value = settings[key];
+    if (settingValuesEqual(value, context.loaded[key])) continue;
+    if (settingValuesEqual(value, context.baseline[key])) delete overrides[key];
+    else Object.assign(overrides, { [key]: value });
+  }
+  return overrides;
+}
+
+function settingValuesEqual(left: unknown, right: unknown): boolean {
+  return Array.isArray(left)
+    ? Array.isArray(right) &&
+        left.length === right.length &&
+        left.every((entry, index) => entry === right[index])
+    : left === right;
+}
+
+function defaultSettingsSaveContext(): SettingsSaveContext {
+  return {
+    baseline: cloneCodePreviewSettings(defaultCodePreviewSettings),
+    loaded: cloneCodePreviewSettings(defaultCodePreviewSettings),
+    globalOverrides: {},
+  };
 }
 
 export function extractCodePreviewSettings(data: unknown): Record<string, unknown> {

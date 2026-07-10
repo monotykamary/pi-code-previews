@@ -10,8 +10,8 @@ export interface BuiltinToolOptions {
   read?: ReadToolOptions;
 }
 
-export function getBuiltinToolOptions(cwd: string): BuiltinToolOptions {
-  const settings = SettingsManager.create(cwd, getAgentDir());
+export function getBuiltinToolOptions(cwd: string, projectTrusted: boolean): BuiltinToolOptions {
+  const settings = SettingsManager.create(cwd, getAgentDir(), { projectTrusted });
   return {
     bash: {
       commandPrefix: settings.getShellCommandPrefix(),

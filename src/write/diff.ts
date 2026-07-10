@@ -15,6 +15,10 @@ export type ExistingFilePreview =
     };
 
 export const MAX_WRITE_DIFF_BYTES = positiveEnvInteger("CODE_PREVIEW_MAX_WRITE_DIFF_BYTES", 200000);
+export const MAX_WRITE_DIFF_CHANGED_LINE_CELLS = positiveEnvInteger(
+  "CODE_PREVIEW_MAX_WRITE_DIFF_CHANGED_LINE_CELLS",
+  1_000_000,
+);
 
 export async function readExistingFileForPreview(
   path: string,
@@ -73,6 +77,26 @@ export function shouldSkipWriteDiffBytes(...texts: string[]): boolean {
     if (total > MAX_WRITE_DIFF_BYTES) return true;
   }
   return false;
+}
+
+export function shouldSkipWriteDiffComplexity(before: string, after: string): boolean {
+  const beforeLines = before.split("\n");
+  const afterLines = after.split("\n");
+  const sharedLimit = Math.min(beforeLines.length, afterLines.length);
+  let prefix = 0;
+  while (prefix < sharedLimit && beforeLines[prefix] === afterLines[prefix]) prefix++;
+
+  let suffix = 0;
+  const suffixLimit = sharedLimit - prefix;
+  while (
+    suffix < suffixLimit &&
+    beforeLines[beforeLines.length - suffix - 1] === afterLines[afterLines.length - suffix - 1]
+  )
+    suffix++;
+
+  const changedBefore = beforeLines.length - prefix - suffix;
+  const changedAfter = afterLines.length - prefix - suffix;
+  return changedBefore * changedAfter > MAX_WRITE_DIFF_CHANGED_LINE_CELLS;
 }
 
 function skippedExistingFile(

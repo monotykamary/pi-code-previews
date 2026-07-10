@@ -77,6 +77,7 @@ export function registerEdit(pi: ExtensionAPI, cwd: string) {
           path,
           renderContext.expanded,
           theme,
+          codePreviewSettings.editCollapsedLines,
         );
         const render = () =>
           renderEditCallPreview(
@@ -153,7 +154,14 @@ export function registerEdit(pi: ExtensionAPI, cwd: string) {
             theme,
             renderContext.invalidate,
           );
-        const previewKey = diffPreviewCacheKey("edit-result", diff, filePath, expanded, theme);
+        const previewKey = diffPreviewCacheKey(
+          "edit-result",
+          diff,
+          filePath,
+          expanded,
+          theme,
+          codePreviewSettings.editCollapsedLines,
+        );
         return cachedAsyncPreview(
           renderContext.state,
           "editResultPreviewKey",

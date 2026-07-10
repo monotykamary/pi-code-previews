@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { test } from "vitest";
-import { injectVisibleRanges, wrapAnsiToWidth } from "./terminal-text";
+import { escapeControlChars, injectVisibleRanges, wrapAnsiToWidth } from "./terminal-text";
 import { stripAnsi } from "../testing/render";
+
+test("terminal text escapes C0, DEL, and C1 control characters", () => {
+  const escaped = escapeControlChars("safe\x00\x1b\x7f\x80\x9btext\t\n");
+
+  assert.equal(escaped, "safe�␛���text\t\n");
+  assert.doesNotMatch(escaped, /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/);
+});
 
 test("visible-range injection preserves SGR foreground resets", () => {
   const highlighted = injectVisibleRanges("ab\x1b[31mc\x1b[39mde", [[1, 4]], {

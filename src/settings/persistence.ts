@@ -1,13 +1,14 @@
 import { cloneCodePreviewSettings, type CodePreviewSettings } from "./index";
-import { saveSettingsToDisk } from "./store";
+import { getSettingsSaveContext, saveSettingsToDisk } from "./store";
 
 let settingsSaveQueue: Promise<void> = Promise.resolve();
 
 export function queueSettingsSave(settings: CodePreviewSettings): Promise<void> {
   const snapshot = cloneCodePreviewSettings(settings);
+  const context = getSettingsSaveContext();
   const nextSave = settingsSaveQueue
     .catch(() => undefined)
-    .then(() => saveSettingsToDisk(snapshot));
+    .then(() => saveSettingsToDisk(snapshot, context));
   settingsSaveQueue = nextSave;
   return nextSave;
 }
