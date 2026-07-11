@@ -8,6 +8,8 @@ export function escapeControlChars(text: string): string {
 }
 
 const ANSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
+const PRINTABLE_ASCII_RE = /^[\x20-\x7e]*$/;
+const TRUNCATION_SAFE_RE = /^(?:[\x20-\x7e\t]|\x1b\[[0-9;]*m)*$/;
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 export function stripAnsi(text: string): string {
@@ -72,7 +74,7 @@ export function wrapAnsiToWidth(
   const continuationWidth = visibleWidth(continuationPrefix);
 
   function pushRow(): boolean {
-    rows.push(truncateToWidth(row, width, ""));
+    rows.push(truncateWrappedRow(row, rowWidth, width));
     if (rows.length >= maxRows) {
       truncateLastRow(rows, width);
       return false;
@@ -94,33 +96,44 @@ export function wrapAnsiToWidth(
     const nextAnsi = text.indexOf("\x1b", index);
     const plainEnd = nextAnsi >= 0 ? nextAnsi : text.length;
     const plain = text.slice(index, plainEnd);
-    for (const { segment } of segmenter.segment(plain)) {
-      const segmentWidth = visibleWidth(segment);
-      if (rowWidth > 0 && rowWidth + segmentWidth > width && !pushRow()) return rows;
-      // A continuation prefix can leave fewer cells than the next grapheme needs.
-      // Drop the prefix for that row rather than truncating the grapheme away.
-      if (rowWidth > 0 && rowWidth + segmentWidth > width) {
-        row = state;
-        rowWidth = 0;
-      }
-      if (segmentWidth > width && rowWidth === 0) {
-        const clipped = truncateToWidth(segment, width, "");
-        if (clipped) {
-          row += clipped;
-          rowWidth += visibleWidth(clipped);
+    const remainingWidth = width - rowWidth;
+    if (plain.length <= remainingWidth && PRINTABLE_ASCII_RE.test(plain)) {
+      row += plain;
+      rowWidth += plain.length;
+    } else {
+      for (const { segment } of segmenter.segment(plain)) {
+        const segmentWidth = visibleWidth(segment);
+        if (rowWidth > 0 && rowWidth + segmentWidth > width && !pushRow()) return rows;
+        // A continuation prefix can leave fewer cells than the next grapheme needs.
+        // Drop the prefix for that row rather than truncating the grapheme away.
+        if (rowWidth > 0 && rowWidth + segmentWidth > width) {
+          row = state;
+          rowWidth = 0;
         }
-        if (!pushRow()) return rows;
-        continue;
+        if (segmentWidth > width && rowWidth === 0) {
+          const clipped = truncateToWidth(segment, width, "");
+          if (clipped) {
+            row += clipped;
+            rowWidth += visibleWidth(clipped);
+          }
+          if (!pushRow()) return rows;
+          continue;
+        }
+        row += segment;
+        rowWidth += segmentWidth;
       }
-      row += segment;
-      rowWidth += segmentWidth;
     }
     index = plainEnd;
   }
 
-  rows.push(truncateToWidth(row, width, ""));
+  rows.push(truncateWrappedRow(row, rowWidth, width));
   if (rows.length > maxRows) return truncateLastRow(rows.slice(0, maxRows), width);
   return rows;
+}
+
+function truncateWrappedRow(row: string, rowWidth: number, width: number): string {
+  if (rowWidth <= width && TRUNCATION_SAFE_RE.test(row)) return row;
+  return truncateToWidth(row, width, "");
 }
 
 function truncateLastRow(rows: string[], width: number): string[] {
