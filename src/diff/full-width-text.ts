@@ -27,22 +27,25 @@ export class FullWidthDiffText implements Component {
   render(width: number): string[] {
     if (this.cachedWidth === width && this.cachedRows) return this.cachedRows;
     const diffBackground = createDiffBackgroundResolver(this.theme);
-    const rows = this.text.split("\n").flatMap((rawLine) => {
+    const rows: string[] = [];
+    for (const rawLine of this.text.split("\n")) {
       const { kind, line } = parseMarkedDiffLine(rawLine);
       const continuation = continuationPrefix(line);
-      const rows = wrapAnsiToWidth(
+      const wrappedRows = wrapAnsiToWidth(
         line,
         width,
         DIFF_WRAP_ROWS,
         visibleWidth(continuation) < width ? continuation : "",
       );
-      if (!kind) return rows;
-
-      return rows.map((row) => {
+      if (!kind) {
+        rows.push(...wrappedRows);
+        continue;
+      }
+      for (const row of wrappedRows) {
         const padding = " ".repeat(Math.max(0, width - visibleWidth(row)));
-        return diffLineBg(kind, row + padding, diffBackground);
-      });
-    });
+        rows.push(diffLineBg(kind, row + padding, diffBackground));
+      }
+    }
     this.cachedWidth = width;
     this.cachedRows = rows;
     return rows;

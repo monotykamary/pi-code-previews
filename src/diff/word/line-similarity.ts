@@ -37,11 +37,19 @@ export function changedLineSimilarityDocuments(
   const removedFeatures = removed.map(changedLineSimilarityFeatureValues);
   const addedFeatures = added.map(changedLineSimilarityFeatureValues);
   const documentCounts = new Map<string, number>();
-  for (const features of [...removedFeatures, ...addedFeatures]) {
+  countSimilarityDocuments(removedFeatures, documentCounts);
+  countSimilarityDocuments(addedFeatures, documentCounts);
+  return { removedFeatures, addedFeatures, documentCounts };
+}
+
+function countSimilarityDocuments(
+  featureLists: string[][],
+  documentCounts: Map<string, number>,
+): void {
+  for (const features of featureLists) {
     for (const feature of new Set(features))
       documentCounts.set(feature, (documentCounts.get(feature) ?? 0) + 1);
   }
-  return { removedFeatures, addedFeatures, documentCounts };
 }
 
 export function hasUniqueSharedSimilarityFeature(

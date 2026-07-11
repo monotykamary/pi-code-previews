@@ -47,7 +47,8 @@ Rendering is conservative: low-confidence ranges are skipped unless the line pai
 
 ## Inspect emphasized spans
 
-Use the span inspector when adding examples or investigating surprising output:
+From a source checkout, use the span inspector when adding examples or investigating surprising
+output. Benchmark sources and golden fixtures are not included in the published npm package.
 
 ```bash
 npm run word:spans -- path/to/diff.txt

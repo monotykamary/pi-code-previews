@@ -74,7 +74,8 @@ function renderDiff(diff: string, options: DiffRenderOptions): string {
       out.push(
         ...renderChangeBlock(
           block,
-          highlightedLines.slice(i, end),
+          highlightedLines,
+          i,
           options.theme,
           lineNumberWidth,
           options.wordEmphasis,
@@ -122,13 +123,19 @@ function renderDiffParsedLine(
 function renderChangeBlock(
   block: ParsedDiffLine[],
   highlightedLines: Array<string | undefined>,
+  highlightedOffset: number,
   theme: Theme,
   lineNumberWidth: number,
   wordEmphasis: DiffWordEmphasis,
 ): string[] {
   const emphasis = changedLineEmphasis(block, wordEmphasis);
   return block.map((line, index) => {
-    const rendered = renderDiffParsedLine(line, highlightedLines[index], theme, lineNumberWidth);
+    const rendered = renderDiffParsedLine(
+      line,
+      highlightedLines[highlightedOffset + index],
+      theme,
+      lineNumberWidth,
+    );
     const match = emphasis.get(index);
     return match ? emphasizeChangedSpans(rendered, match.ranges, match.kind) : rendered;
   });

@@ -1,19 +1,20 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "vitest";
+import { cleanupTestTempDirectories, createTestTempDirectory } from "../testing/temp-directories";
 import { getBuiltinToolOptions } from "./builtin-options";
 
 const originalPiCodingAgentDir = process.env.PI_CODING_AGENT_DIR;
 
-afterEach(() => {
+afterEach(async () => {
   if (originalPiCodingAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalPiCodingAgentDir;
+  await cleanupTestTempDirectories();
 });
 
 test("builtin tool options preserve Pi shell and image settings", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-tool-options-"));
+  const root = await createTestTempDirectory("pi-code-previews-tool-options-");
   const agentDir = join(root, "agent");
   const cwd = join(root, "project");
   process.env.PI_CODING_AGENT_DIR = agentDir;
@@ -36,7 +37,7 @@ test("builtin tool options preserve Pi shell and image settings", async () => {
 });
 
 test("builtin tool options ignore project settings when the project is untrusted", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-tool-options-trust-"));
+  const root = await createTestTempDirectory("pi-code-previews-tool-options-trust-");
   const agentDir = join(root, "agent");
   const cwd = join(root, "project");
   process.env.PI_CODING_AGENT_DIR = agentDir;

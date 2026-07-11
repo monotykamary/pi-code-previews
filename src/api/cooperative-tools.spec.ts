@@ -6,7 +6,7 @@ import { withCodePreviewShell } from "../../index";
 import { createToolRenderContext, renderComponent, stripAnsi, testTheme } from "../testing/render";
 
 test("withCodePreviewShell preserves execution and wraps existing renderers", async () => {
-  const execute = vi.fn(async () => ({
+  const execute = vi.fn<ToolDefinition["execute"]>(async () => ({
     content: [{ type: "text" as const, text: "ok" }],
     details: {},
   }));

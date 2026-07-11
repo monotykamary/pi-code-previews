@@ -8,12 +8,12 @@ import { shouldEmphasizeChangedPair } from "./emphasis";
 
 export function changedLineEmphasis(
   block: ParsedDiffLine[],
-  wordEmphasis: DiffWordEmphasis,
+  mode: DiffWordEmphasis,
 ): Map<number, { ranges: Array<[number, number]>; kind: "add" | "remove" }> {
   const emphasis = new Map<number, { ranges: Array<[number, number]>; kind: "add" | "remove" }>();
-  if (wordEmphasis === "off") return emphasis;
+  if (mode === "off") return emphasis;
 
-  for (const { pair, ranges } of analyzeChangedLineBlock(block, wordEmphasis).ranges) {
+  for (const { pair, ranges } of analyzeChangedLineBlock(block, mode).ranges) {
     if (!shouldEmphasizeChangedPair(ranges, pair.confidence)) continue;
     emphasis.set(pair.removedIndex, { ranges: ranges.removed, kind: "remove" });
     emphasis.set(pair.addedIndex, { ranges: ranges.added, kind: "add" });

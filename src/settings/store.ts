@@ -50,6 +50,8 @@ export async function loadSettingsFromDisk(
     getLegacySettingsPath(),
   ].filter((candidate) => candidate !== settingsPath);
   for (const candidate of new Set(baselinePaths)) {
+    // Each settings layer uses the previous layer as its fallback, so precedence requires this.
+    // oxlint-disable-next-line no-await-in-loop
     const next = await loadSettingsFile(candidate, effective);
     if (!next) continue;
     effective = next.settings;

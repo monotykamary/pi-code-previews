@@ -22,6 +22,8 @@ export function renderGrepOutputLines(
 ): string[] {
   const rendered: string[] = [];
   let currentPath = "";
+  let currentLanguage: string | undefined;
+  const syntaxHighlight = options.syntaxHighlight !== false;
   for (const rawLine of output.split("\n")) {
     if (!rawLine) {
       rendered.push("");
@@ -38,47 +40,43 @@ export function renderGrepOutputLines(
     }
     if (parsed.path !== currentPath) {
       currentPath = parsed.path;
+      currentLanguage = syntaxHighlight
+        ? resolvePreviewLanguage({
+            path: currentPath,
+            piLanguage: getLanguageFromPath(currentPath),
+          })
+        : undefined;
       rendered.push(theme.fg("accent", escapeControlChars(currentPath)));
     }
-    rendered.push(
-      renderGrepParsedLine(parsed, theme, search, invalidate, options.syntaxHighlight !== false),
-    );
+    rendered.push(renderGrepParsedLine(parsed, currentLanguage, theme, search, invalidate));
   }
   return rendered;
 }
 
 export function parseGrepOutputLine(line: string): ParsedGrepOutputLine | undefined {
-  const matchLine = line.match(/^(.+):(\d+):\s(.*)$/);
-  if (matchLine) {
-    return {
-      path: matchLine[1],
-      lineNumber: matchLine[2],
-      code: matchLine[3],
-      kind: "match",
-    };
-  }
-  const contextLine = line.match(/^(.+)-(\d+)-\s(.*)$/);
-  if (contextLine) {
-    return {
-      path: contextLine[1],
-      lineNumber: contextLine[2],
-      code: contextLine[3],
-      kind: "context",
-    };
-  }
-  return undefined;
+  return (
+    parsedGrepMatch(line.match(/^(.+):(\d+):\s(.*)$/), "match") ??
+    parsedGrepMatch(line.match(/^(.+)-(\d+)-\s(.*)$/), "context")
+  );
+}
+
+function parsedGrepMatch(
+  match: RegExpMatchArray | null,
+  kind: ParsedGrepOutputLine["kind"],
+): ParsedGrepOutputLine | undefined {
+  if (!match) return undefined;
+  const [, path, lineNumber, code] = match;
+  if (path === undefined || lineNumber === undefined || code === undefined) return undefined;
+  return { path, lineNumber, code, kind };
 }
 
 function renderGrepParsedLine(
   parsed: ParsedGrepOutputLine,
+  lang: string | undefined,
   theme: Theme,
   search: { pattern: string; literal: boolean; ignoreCase: boolean },
   invalidate: (() => void) | undefined,
-  syntaxHighlight: boolean,
 ): string {
-  const lang = syntaxHighlight
-    ? resolvePreviewLanguage({ path: parsed.path, piLanguage: getLanguageFromPath(parsed.path) })
-    : undefined;
   const code = expandPreviewTabs(parsed.code);
   let highlighted =
     renderHighlightedText(code, lang, theme, invalidate)[0] ?? theme.fg("toolOutput", code);

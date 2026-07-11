@@ -10,12 +10,12 @@ import { executeWriteWithPreview } from "./preview-execution";
 
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs/promises")>()),
-  mkdir: vi.fn(),
-  writeFile: vi.fn(),
+  mkdir: vi.fn<typeof mkdir>(),
+  writeFile: vi.fn<typeof writeFile>(),
 }));
 
 vi.mock("./diff", () => ({
-  readExistingFileForPreview: vi.fn(),
+  readExistingFileForPreview: vi.fn<typeof readExistingFileForPreview>(),
 }));
 
 test("aborted writes keep the file mutation queue locked until in-flight writes settle", async () => {

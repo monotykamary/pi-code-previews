@@ -13,5 +13,11 @@ test("getBashWarnings returns user-facing labels", () => {
     "discards git changes",
     "removes untracked files",
   ]);
+  assert.deepEqual(getBashWarnings("chmod -R 755 build && chown --recursive user build"), [
+    "recursive permission change",
+    "recursive ownership change",
+  ]);
+  assert.deepEqual(getBashWarnings("docker system prune --all --force"), ["removes Docker data"]);
+  assert.deepEqual(getBashWarnings("printf hosts >> /etc/hosts"), ["writes to a system path"]);
   assert.deepEqual(getBashWarnings("echo hi"), []);
 });

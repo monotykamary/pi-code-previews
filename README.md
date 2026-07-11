@@ -56,7 +56,7 @@ The health panel shows configured tools, active previews, disabled tools, and pr
 
 ## Benchmarks
 
-Diff/edit rendering benchmarks are available for local performance checks:
+From a source checkout, diff/edit rendering benchmarks are available for local performance checks:
 
 ```bash
 npm run bench:recommended

@@ -32,17 +32,17 @@ console.log(
 );
 
 function emphasizedSpans(line: string): string[] {
-  const spans: string[] = [];
+  const emphasized: string[] = [];
   WORD_EMPHASIS_OPEN.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = WORD_EMPHASIS_OPEN.exec(line))) {
     const start = match.index + match[0].length;
     const end = line.indexOf(WORD_EMPHASIS_CLOSE, start);
     if (end < 0) break;
-    spans.push(stripAnsi(line.slice(start, end)));
+    emphasized.push(stripAnsi(line.slice(start, end)));
     WORD_EMPHASIS_OPEN.lastIndex = end + WORD_EMPHASIS_CLOSE.length;
   }
-  return spans;
+  return emphasized;
 }
 
 function plainTheme(): Theme {

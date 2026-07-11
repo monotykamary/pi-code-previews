@@ -210,12 +210,12 @@ export function hiddenPreviewExpandHintForShell(
   state: Record<string, unknown>,
   theme: Theme,
 ): string {
-  const borderState = state as BorderState;
-  const slot = borderState.codePreviewBorderCurrentSlot;
+  const shellState = state as BorderState;
+  const slot = shellState.codePreviewBorderCurrentSlot;
   if (slot !== "call" && slot !== "result") return hiddenPreviewExpandHint(theme);
   if (slot === "call")
-    borderState.codePreviewBorderCallExpandLabel = hiddenPreviewExpandLabel(theme);
-  else borderState.codePreviewBorderResultExpandLabel = hiddenPreviewExpandLabel(theme);
+    shellState.codePreviewBorderCallExpandLabel = hiddenPreviewExpandLabel(theme);
+  else shellState.codePreviewBorderResultExpandLabel = hiddenPreviewExpandLabel(theme);
   return "";
 }
 

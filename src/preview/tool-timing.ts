@@ -146,7 +146,7 @@ function formatToolCallDuration(ms: number): string {
 export class TimingPreservedComponent implements Component {
   constructor(
     readonly component: Component,
-    private readonly timingState: TimingState,
+    private readonly state: TimingState,
   ) {}
 
   render(width: number): string[] {
@@ -154,7 +154,7 @@ export class TimingPreservedComponent implements Component {
   }
 
   invalidate(): void {
-    if (!isToolCallTimingOnlyRender(this.timingState)) this.component.invalidate?.();
+    if (!isToolCallTimingOnlyRender(this.state)) this.component.invalidate?.();
   }
 }
 
@@ -162,7 +162,7 @@ class ToolTimingFooter implements Component {
   constructor(
     private readonly component: Component,
     private readonly footer: string,
-    private readonly timingState: TimingState,
+    private readonly state: TimingState,
   ) {}
 
   render(width: number): string[] {
@@ -170,6 +170,6 @@ class ToolTimingFooter implements Component {
   }
 
   invalidate(): void {
-    if (!isToolCallTimingOnlyRender(this.timingState)) this.component.invalidate?.();
+    if (!isToolCallTimingOnlyRender(this.state)) this.component.invalidate?.();
   }
 }
