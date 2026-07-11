@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, CONFIG_DIR_NAME } from "@earendil-works/pi-coding-agent";
 import { isFileNotFound } from "../shared/errors";
 import { CODE_PREVIEW_SETTING_KEYS } from "./definitions";
 import { defaultCodePreviewSettings } from "./defaults";
@@ -14,7 +14,7 @@ export function getSettingsPath(): string {
 }
 
 function getLegacyAgentDir(): string {
-  return join(homedir(), ".pi", "agent");
+  return join(homedir(), CONFIG_DIR_NAME, "agent");
 }
 
 function getLegacySettingsPath(): string {
@@ -32,10 +32,10 @@ export async function loadSettingsFromDisk(
   let effective = cloneCodePreviewSettings(defaultCodePreviewSettings);
   const projectCwd = options.projectCwd ?? process.cwd();
   const settingsPaths = [
-    join(homedir(), ".pi", "settings.json"),
+    join(homedir(), CONFIG_DIR_NAME, "settings.json"),
     join(getLegacyAgentDir(), "settings.json"),
     join(getAgentDir(), "settings.json"),
-    join(projectCwd, ".pi", "settings.json"),
+    join(projectCwd, CONFIG_DIR_NAME, "settings.json"),
     getLegacySettingsPath(),
     getSettingsPath(),
   ];
