@@ -110,11 +110,15 @@ export function fallbackLineSimilarity(
   removed: IndexedChangedLine<RemovedDiffLine>,
   added: IndexedChangedLine<AddedDiffLine>,
   weight: SimilarityTokenWeight,
+  removedWeight?: number,
+  addedWeight?: number,
 ): number {
   return unorderedTokenSimilarity(
     changedLineSimilarityFeatureValues(removed),
     changedLineSimilarityFeatureValues(added),
     weight,
+    removedWeight,
+    addedWeight,
   );
 }
 
@@ -123,14 +127,28 @@ export function tokenSimilarity(
   afterTokens: string[],
   weight: SimilarityTokenWeight = tokenWeight,
   minimumRelevantSimilarity = 0,
+  beforeWeight?: number,
+  afterWeight?: number,
 ): number {
   if (beforeTokens.length === 0 || afterTokens.length === 0)
     return beforeTokens.length === afterTokens.length ? 1 : 0;
-  const bagSimilarity = unorderedTokenSimilarity(beforeTokens, afterTokens, weight);
+  const bagSimilarity = unorderedTokenSimilarity(
+    beforeTokens,
+    afterTokens,
+    weight,
+    beforeWeight,
+    afterWeight,
+  );
   // Ordered overlap cannot exceed multiset overlap. Avoid its dynamic program when
   // the upper bound is already below the caller's minimum useful score.
   if (bagSimilarity < minimumRelevantSimilarity) return bagSimilarity;
-  const orderedSimilarity = orderedTokenSimilarity(beforeTokens, afterTokens, weight);
+  const orderedSimilarity = orderedTokenSimilarity(
+    beforeTokens,
+    afterTokens,
+    weight,
+    beforeWeight ?? similarityTokenListWeight(beforeTokens, weight),
+    afterWeight ?? similarityTokenListWeight(afterTokens, weight),
+  );
   if (orderedSimilarity === undefined) return bagSimilarity;
   return Math.max(
     orderedSimilarity,
@@ -143,9 +161,9 @@ function unorderedTokenSimilarity(
   beforeTokens: string[],
   afterTokens: string[],
   weight: SimilarityTokenWeight,
+  beforeWeight = similarityTokenListWeight(beforeTokens, weight),
+  afterWeight = similarityTokenListWeight(afterTokens, weight),
 ): number {
-  const beforeWeight = tokenListWeight(beforeTokens, weight);
-  const afterWeight = tokenListWeight(afterTokens, weight);
   const remaining = new Map<string, number>();
   for (const token of beforeTokens) remaining.set(token, (remaining.get(token) ?? 0) + 1);
   let sharedWeight = 0;
@@ -163,10 +181,10 @@ function orderedTokenSimilarity(
   beforeTokens: string[],
   afterTokens: string[],
   weight: SimilarityTokenWeight,
+  beforeWeight: number,
+  afterWeight: number,
 ): number | undefined {
   if (beforeTokens.length * afterTokens.length > MAX_LINE_TOKEN_SIMILARITY_CELLS) return undefined;
-  const beforeWeight = tokenListWeight(beforeTokens, weight);
-  const afterWeight = tokenListWeight(afterTokens, weight);
   const score = suffixAlignmentScore(
     beforeTokens.length,
     afterTokens.length,
@@ -181,7 +199,7 @@ function orderedTokenSimilarity(
   return (2 * score) / (beforeWeight + afterWeight);
 }
 
-function tokenListWeight(tokens: string[], weight: SimilarityTokenWeight): number {
+export function similarityTokenListWeight(tokens: string[], weight: SimilarityTokenWeight): number {
   return tokens.reduce((total, token) => total + weight(token), 0);
 }
 

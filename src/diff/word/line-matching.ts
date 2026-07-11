@@ -5,6 +5,7 @@ import {
   changedLineSimilarityDocuments,
   fallbackLineSimilarity,
   hasUniqueSharedSimilarityFeature,
+  similarityTokenListWeight,
   similarityTokenWeight,
   tokenSimilarity,
 } from "./line-similarity";
@@ -43,9 +44,22 @@ export function matchChangedLines(
   const similarityDocuments = changedLineSimilarityDocuments(removed, added);
   const tokenWeight = similarityTokenWeight(similarityDocuments);
   const { removedFeatures, addedFeatures } = similarityDocuments;
-  const scores = removedFeatures.map((beforeTokens) =>
-    addedFeatures.map((afterTokens) =>
-      tokenSimilarity(beforeTokens, afterTokens, tokenWeight, MIN_POSITIONAL_FALLBACK_PAIR_SCORE),
+  const removedWeights = removedFeatures.map((tokens) =>
+    similarityTokenListWeight(tokens, tokenWeight),
+  );
+  const addedWeights = addedFeatures.map((tokens) =>
+    similarityTokenListWeight(tokens, tokenWeight),
+  );
+  const scores = removedFeatures.map((beforeTokens, removedPosition) =>
+    addedFeatures.map((afterTokens, addedPosition) =>
+      tokenSimilarity(
+        beforeTokens,
+        afterTokens,
+        tokenWeight,
+        MIN_POSITIONAL_FALLBACK_PAIR_SCORE,
+        removedWeights[removedPosition],
+        addedWeights[addedPosition],
+      ),
     ),
   );
   const similarPairs = prefixAlignedPairs(
@@ -90,19 +104,35 @@ function matchChangedLinesByPosition(
   const pairs: ChangedLinePair[] = [];
   const similarityDocuments = changedLineSimilarityDocuments(removed, added);
   const tokenWeight = similarityTokenWeight(similarityDocuments);
+  const removedWeights: Array<number | undefined> = [];
+  const addedWeights: Array<number | undefined> = [];
   const canCheckAmbiguity =
     removed.length * added.length <= MAX_POSITIONAL_FALLBACK_AMBIGUITY_CELLS;
-  const scoreCache = new Map<string, number>();
+  const scoreCache = canCheckAmbiguity ? new Map<number, number>() : undefined;
   const scoreAt = (removedPosition: number, addedPosition: number): number => {
-    const key = `${removedPosition}:${addedPosition}`;
-    const cached = scoreCache.get(key);
+    const key = removedPosition * added.length + addedPosition;
+    const cached = scoreCache?.get(key);
     if (cached !== undefined) return cached;
+    const removedFeatures = similarityDocuments.removedFeatures[removedPosition];
+    const addedFeatures = similarityDocuments.addedFeatures[addedPosition];
+    if (removedFeatures === undefined || addedFeatures === undefined)
+      throw new RangeError(`Missing similarity features ${removedPosition}:${addedPosition}`);
+    const removedWeight = (removedWeights[removedPosition] ??= similarityTokenListWeight(
+      removedFeatures,
+      tokenWeight,
+    ));
+    const addedWeight = (addedWeights[addedPosition] ??= similarityTokenListWeight(
+      addedFeatures,
+      tokenWeight,
+    ));
     const score = fallbackLineSimilarity(
       changedLineAt(removed, removedPosition),
       changedLineAt(added, addedPosition),
       tokenWeight,
+      removedWeight,
+      addedWeight,
     );
-    scoreCache.set(key, score);
+    scoreCache?.set(key, score);
     return score;
   };
 
