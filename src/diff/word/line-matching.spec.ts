@@ -1,12 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { AddedDiffLine, RemovedDiffLine } from "../parse";
-import {
-  indexedChangedLine,
-  matchChangedLines,
-  type ChangedLinePair,
-  type IndexedChangedLine,
-} from "./line-matching";
+import { indexedChangedLine, type IndexedChangedLine } from "./changed-line";
+import { matchChangedLines, type ChangedLinePair } from "./line-matching";
 
 test("line matching recovers a 33-line reversal above the full-matrix cutoff", () => {
   const contents = Array.from({ length: 33 }, (_, index) => uniqueLine(index, "old"));

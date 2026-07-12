@@ -2,7 +2,7 @@ const ALIGNMENT_SCORE_EPSILON = 1e-9;
 
 type PairScoreAt = (beforeIndex: number, afterIndex: number) => number;
 
-export function sameAlignmentScore(a: number, b: number): boolean {
+function sameAlignmentScore(a: number, b: number): boolean {
   return Math.abs(a - b) < ALIGNMENT_SCORE_EPSILON;
 }
 

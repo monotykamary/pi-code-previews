@@ -7,20 +7,14 @@ const WORD_EMPHASIS_EXACT_LCS_MAX_CELLS = 262_144;
 
 export type ChangedTokenGap = { removed: TokenGroup; added: TokenGroup };
 
-export type ChangedTokenIndexes = {
-  removed: Set<number>;
-  added: Set<number>;
-  gaps: ChangedTokenGap[];
-};
-
-export function collectChangedTokenIndexes(
+export function collectChangedTokenGaps(
   before: WordEmphasisToken[],
   beforeStart: number,
   beforeEnd: number,
   after: WordEmphasisToken[],
   afterStart: number,
   afterEnd: number,
-  changed: ChangedTokenIndexes,
+  gaps: ChangedTokenGap[],
 ): WordChangeConfidence {
   while (
     beforeStart < beforeEnd &&
@@ -41,28 +35,20 @@ export function collectChangedTokenIndexes(
   }
 
   if (beforeStart === beforeEnd || afterStart === afterEnd) {
-    markChangedTokenGap(changed, beforeStart, beforeEnd, afterStart, afterEnd);
+    appendChangedTokenGap(gaps, beforeStart, beforeEnd, afterStart, afterEnd);
     return "high";
   }
 
   const beforeLength = beforeEnd - beforeStart;
   const afterLength = afterEnd - afterStart;
   if (beforeLength * afterLength <= WORD_EMPHASIS_EXACT_LCS_MAX_CELLS) {
-    collectChangedTokenIndexesByLcs(
-      before,
-      beforeStart,
-      beforeEnd,
-      after,
-      afterStart,
-      afterEnd,
-      changed,
-    );
+    collectChangedTokenGapsByLcs(before, beforeStart, beforeEnd, after, afterStart, afterEnd, gaps);
     return "high";
   }
 
   const anchors = uniqueOrderedAnchors(before, beforeStart, beforeEnd, after, afterStart, afterEnd);
   if (anchors.length === 0) {
-    markChangedTokenGap(changed, beforeStart, beforeEnd, afterStart, afterEnd);
+    appendChangedTokenGap(gaps, beforeStart, beforeEnd, afterStart, afterEnd);
     return "low";
   }
 
@@ -72,14 +58,14 @@ export function collectChangedTokenIndexes(
   for (const anchor of anchors) {
     confidence = lowerWordChangeConfidence(
       confidence,
-      collectChangedTokenIndexes(
+      collectChangedTokenGaps(
         before,
         previousBefore,
         anchor.beforeIndex,
         after,
         previousAfter,
         anchor.afterIndex,
-        changed,
+        gaps,
       ),
     );
     previousBefore = anchor.beforeIndex + 1;
@@ -87,14 +73,14 @@ export function collectChangedTokenIndexes(
   }
   confidence = lowerWordChangeConfidence(
     confidence,
-    collectChangedTokenIndexes(
+    collectChangedTokenGaps(
       before,
       previousBefore,
       beforeEnd,
       after,
       previousAfter,
       afterEnd,
-      changed,
+      gaps,
     ),
   );
   return lowerWordChangeConfidence(confidence, "medium");
@@ -113,14 +99,14 @@ const WORD_CHANGE_CONFIDENCE_RANK = {
   high: 2,
 } satisfies Record<WordChangeConfidence, number>;
 
-function collectChangedTokenIndexesByLcs(
+function collectChangedTokenGapsByLcs(
   before: WordEmphasisToken[],
   beforeStart: number,
   beforeEnd: number,
   after: WordEmphasisToken[],
   afterStart: number,
   afterEnd: number,
-  changed: ChangedTokenIndexes,
+  gaps: ChangedTokenGap[],
 ): void {
   const beforeLength = beforeEnd - beforeStart;
   const afterLength = afterEnd - afterStart;
@@ -135,8 +121,8 @@ function collectChangedTokenIndexesByLcs(
   let beforeIndex = 0;
   let afterIndex = 0;
   for (const [nextBeforeIndex, nextAfterIndex] of pairs) {
-    markChangedTokenGap(
-      changed,
+    appendChangedTokenGap(
+      gaps,
       beforeStart + beforeIndex,
       beforeStart + nextBeforeIndex,
       afterStart + afterIndex,
@@ -145,8 +131,8 @@ function collectChangedTokenIndexesByLcs(
     beforeIndex = nextBeforeIndex + 1;
     afterIndex = nextAfterIndex + 1;
   }
-  markChangedTokenGap(
-    changed,
+  appendChangedTokenGap(
+    gaps,
     beforeStart + beforeIndex,
     beforeEnd,
     afterStart + afterIndex,
@@ -220,21 +206,15 @@ function tokenCounts(tokens: WordEmphasisToken[], start: number, end: number): M
   return counts;
 }
 
-function markTokenRange(changed: Set<number>, start: number, end: number): void {
-  for (let index = start; index < end; index++) changed.add(index);
-}
-
-function markChangedTokenGap(
-  changed: ChangedTokenIndexes,
+function appendChangedTokenGap(
+  gaps: ChangedTokenGap[],
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
 ): void {
   if (beforeStart === beforeEnd && afterStart === afterEnd) return;
-  markTokenRange(changed.removed, beforeStart, beforeEnd);
-  markTokenRange(changed.added, afterStart, afterEnd);
-  changed.gaps.push({
+  gaps.push({
     removed: { start: beforeStart, end: beforeEnd },
     added: { start: afterStart, end: afterEnd },
   });

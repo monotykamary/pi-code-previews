@@ -90,9 +90,9 @@ precision-biased accuracy report with:
 npm run word:accuracy
 ```
 
-It reports pair and character-span precision, recall, F0.5, exact cases, and the over-highlight
-ratio. The test suite requires the labeled corpus to remain exact; add new cases before tuning
-similarity or ambiguity thresholds.
+It reports pair and UTF-16 code-unit span precision, recall, F0.5, exact cases, and the
+over-highlight ratio. The test suite requires the labeled corpus to remain exact; add new cases
+before tuning similarity or ambiguity thresholds.
 
 ## Telemetry in benchmarks
 

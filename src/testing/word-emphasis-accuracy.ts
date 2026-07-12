@@ -10,20 +10,21 @@ import {
 import { codePreviewSettings, setCodePreviewSettings } from "../settings/index";
 import { initializeShiki } from "../syntax/shiki";
 import { testTheme } from "./render";
+import { parseRenderedWordEmphasis } from "./rendered-word-emphasis";
 
-type CharacterCounts = {
+type AccuracyCounts = {
   truePositive: number;
   falsePositive: number;
   falseNegative: number;
 };
 
-export type PrecisionBiasedMetrics = CharacterCounts & {
+type PrecisionBiasedMetrics = AccuracyCounts & {
   precision: number;
   recall: number;
   f0_5: number;
 };
 
-export type WordEmphasisAccuracyCaseResult = {
+type WordEmphasisAccuracyCaseResult = {
   name: string;
   exactSpans: boolean;
   exactSpanLines: number;
@@ -32,7 +33,7 @@ export type WordEmphasisAccuracyCaseResult = {
   pairs?: PrecisionBiasedMetrics;
 };
 
-export type WordEmphasisAccuracyReport = {
+type WordEmphasisAccuracyReport = {
   caseCount: number;
   exactSpanCases: number;
   exactSpanLines: number;
@@ -45,15 +46,6 @@ export type WordEmphasisAccuracyReport = {
 
 type Range = [start: number, end: number];
 type LinePair = [removedLine: number, addedLine: number];
-
-const WORD_EMPHASIS_OPEN = new Set([
-  "\x1b[48;2;64;132;82m",
-  "\x1b[48;2;148;62;70m",
-  "\x1b[48;2;194;209;194m",
-  "\x1b[48;2;216;182;182m",
-]);
-const WORD_EMPHASIS_CLOSE = "\x1b[49m";
-const SGR_SEQUENCE = /^\x1b\[[0-9;]*m/;
 
 export async function evaluateWordEmphasisAccuracy(
   cases: readonly WordEmphasisAccuracyCase[] = wordEmphasisAccuracyCases,
@@ -127,7 +119,7 @@ function evaluateCase(accuracyCase: WordEmphasisAccuracyCase): WordEmphasisAccur
       accuracyCase.name,
       accuracyCase.expectedRanges?.[index],
     );
-    const actual = emphasizedRanges(renderedLine);
+    const actual = parseRenderedWordEmphasis(renderedLine);
     addRangeCounts(spanCounts, expectedRanges, actual.ranges);
     if (sameRanges(expectedRanges, actual.ranges) && actual.content === parsed.content)
       exactSpanLines++;
@@ -180,35 +172,6 @@ function rangesForExpectedSpans(
   return ranges;
 }
 
-function emphasizedRanges(line: string): { content: string; ranges: Range[] } {
-  const pipe = line.indexOf("│ ");
-  const code = pipe < 0 ? line : line.slice(pipe + "│ ".length);
-  const ranges: Range[] = [];
-  let content = "";
-  let rangeStart: number | undefined;
-
-  for (let index = 0; index < code.length; ) {
-    if (code[index] === "\x1b") {
-      const sequence = code.slice(index).match(SGR_SEQUENCE)?.[0];
-      if (sequence) {
-        if (WORD_EMPHASIS_OPEN.has(sequence) && rangeStart === undefined)
-          rangeStart = content.length;
-        else if (sequence === WORD_EMPHASIS_CLOSE && rangeStart !== undefined) {
-          ranges.push([rangeStart, content.length]);
-          rangeStart = undefined;
-        }
-        index += sequence.length;
-        continue;
-      }
-    }
-    content += code[index];
-    index++;
-  }
-  if (rangeStart !== undefined)
-    throw new Error(`Unterminated word emphasis in ${JSON.stringify(line)}`);
-  return { content, ranges };
-}
-
 function emphasizedLinePairs(accuracyCase: WordEmphasisAccuracyCase): LinePair[] {
   const parsedLines = accuracyCase.diff.map(parseDiffLine);
   const pairs: LinePair[] = [];
@@ -231,7 +194,7 @@ function emphasizedLinePairs(accuracyCase: WordEmphasisAccuracyCase): LinePair[]
 function pairAccuracyCounts(
   accuracyCase: WordEmphasisAccuracyCase,
   actualPairs: readonly LinePair[],
-): CharacterCounts {
+): AccuracyCounts {
   const expected = new Set((accuracyCase.expectedPairs ?? []).map(pairKey));
   const actual = new Set(actualPairs.map(pairKey));
   let truePositive = 0;
@@ -247,7 +210,7 @@ function pairKey(pair: LinePair): string {
   return `${pair[0]}:${pair[1]}`;
 }
 
-function addRangeCounts(counts: CharacterCounts, expected: Range[], actual: Range[]): void {
+function addRangeCounts(counts: AccuracyCounts, expected: Range[], actual: Range[]): void {
   const expectedCharacters = coveredCharacters(expected);
   const actualCharacters = coveredCharacters(actual);
   for (const character of actualCharacters) {
@@ -272,7 +235,7 @@ function sameRanges(left: readonly Range[], right: readonly Range[]): boolean {
   );
 }
 
-function sumMetrics(values: readonly CharacterCounts[]): CharacterCounts {
+function sumMetrics(values: readonly AccuracyCounts[]): AccuracyCounts {
   return values.reduce(
     (total, value) => ({
       truePositive: total.truePositive + value.truePositive,
@@ -283,11 +246,11 @@ function sumMetrics(values: readonly CharacterCounts[]): CharacterCounts {
   );
 }
 
-function emptyCounts(): CharacterCounts {
+function emptyCounts(): AccuracyCounts {
   return { truePositive: 0, falsePositive: 0, falseNegative: 0 };
 }
 
-function metrics(counts: CharacterCounts): PrecisionBiasedMetrics {
+function metrics(counts: AccuracyCounts): PrecisionBiasedMetrics {
   const precision = ratio(counts.truePositive, counts.truePositive + counts.falsePositive);
   const recall = ratio(counts.truePositive, counts.truePositive + counts.falseNegative);
   const betaSquared = 0.25;

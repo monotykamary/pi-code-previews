@@ -1,11 +1,10 @@
 import {
   changedLineTokens,
   indexedChangedLine,
-  matchChangedLines,
   normalizedChangedContent,
-  type ChangedLinePair,
   type IndexedChangedLine,
-} from "./line-matching";
+} from "./changed-line";
+import { matchChangedLines, type ChangedLinePair } from "./line-matching";
 import type { DiffWordEmphasis } from "../../settings/types";
 import {
   isAddedDiffLine,

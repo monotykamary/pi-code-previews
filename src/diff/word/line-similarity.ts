@@ -3,13 +3,13 @@ import { suffixAlignmentScore } from "./alignment";
 import { wordEmphasisSimilarityTokenValues, wordEmphasisTokenWeight } from "./tokens";
 import { changedLineTokens, type IndexedChangedLine } from "./changed-line";
 
-export type ChangedLineSimilarityDocuments = {
+type ChangedLineSimilarityDocuments = {
   removedFeatures: string[][];
   addedFeatures: string[][];
   documentCounts: Map<string, number>;
 };
 
-export type SimilarityTokenWeight = (token: string) => number;
+type SimilarityTokenWeight = (token: string) => number;
 
 const SIMILARITY_BIGRAM_PREFIX = "\u0000PI_SIM_BIGRAM\u0000";
 const MAX_LINE_TOKEN_SIMILARITY_CELLS = 16_384;
