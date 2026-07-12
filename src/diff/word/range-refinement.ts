@@ -108,9 +108,22 @@ function refinedTokenPairRanges(
   if (identifierRanges && isNarrowerThanWholeTokens(identifierRanges, beforeToken, afterToken)) {
     if (shouldSuppressUnbalancedIdentifierPartRefinement(beforeToken, afterToken, textRanges))
       return textRanges;
+    if (
+      textRanges &&
+      (textRanges.removed.length === 0 || textRanges.added.length === 0) &&
+      highlightedRangeWidth(textRanges) < highlightedRangeWidth(identifierRanges)
+    )
+      return textRanges;
     return identifierRanges;
   }
   return textRanges ?? identifierRanges;
+}
+
+function highlightedRangeWidth(ranges: WordChangeRanges): number {
+  let width = 0;
+  for (const [start, end] of ranges.removed) width += end - start;
+  for (const [start, end] of ranges.added) width += end - start;
+  return width;
 }
 
 function shouldSuppressUnbalancedIdentifierPartRefinement(

@@ -32,7 +32,7 @@ type ChangedLineScoreAt = (removedPosition: number, addedPosition: number) => nu
 
 export type SparseLineMatchingPolicy = {
   minPositionalFallbackPairScore: number;
-  minHighConfidenceCrossingPairScore: number;
+  minChangedLinePairScore: number;
   competingChangedLineScoreAt: (
     removedLength: number,
     addedLength: number,
@@ -338,7 +338,7 @@ function sparseChangedLineAnchors(
   const pairs: SparseChangedLinePair[] = [];
 
   for (const candidate of scoredCandidates) {
-    if (candidate.score < policy.minHighConfidenceCrossingPairScore) continue;
+    if (candidate.score < policy.minChangedLinePairScore) continue;
     if (usedRemoved.has(candidate.removedPosition) || usedAdded.has(candidate.addedPosition))
       continue;
     if (!hasStrongSparseEvidence(candidate)) continue;

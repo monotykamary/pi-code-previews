@@ -24,7 +24,7 @@ Inside each contiguous changed block, removed and added lines are paired before 
 - token bigrams for local ordering evidence
 - high-confidence crossing matches for reordered lines
 - reciprocal-best medium-confidence matches when a reordered pair is clearly dominant
-- bounded rare-feature anchors for reordered or shifted large blocks
+- bounded rare-feature anchors for high- and medium-confidence reorders in large blocks
 - ambiguity detection that skips uncertain pairings instead of guessing
 
 ### 2. Find changed spans inside paired lines
@@ -34,11 +34,11 @@ For each paired line, changed spans are computed over normalized rendered text s
 - weighted token LCS for exact alignment
 - alignment-gap-aware refinement, so insertions and replacements are not compared across unrelated gaps
 - compound identifier refinement
-- single-token text refinement, e.g. `value1000` -> `value1001`
+- single-token text refinement, including separator-only edits and `value1000` -> `value1001`
 - bounded grapheme alignment for meaningful shared text inside short tokens
 - soft token substitution alignment for similar identifiers/numbers/operators
 - extended-grapheme-safe ranges for emoji and combining sequences
-- smart filtering for low-signal syntax noise
+- smart filtering that suppresses low-signal syntax noise while retaining Unicode symbols
 
 ## Confidence model
 
@@ -97,9 +97,10 @@ before tuning similarity or ambiguity thresholds.
 ## Telemetry in benchmarks
 
 `npm run bench:word-pathology` prints both performance and confidence summaries. It includes the
-32x32/33x33 full-matrix boundary, large sparse reordered and shifted blocks, internal-token
-refinement, and extended grapheme refinement. Use it before changing thresholds or tokenization so
-accuracy improvements do not accidentally increase skipped pairs or pathological render time.
+32x32/33x33 full-matrix boundary, high- and medium-confidence sparse reorders, internal-token
+refinement, Unicode symbol filtering, and extended grapheme refinement. Use it before changing
+thresholds or tokenization so accuracy improvements do not accidentally increase skipped pairs or
+pathological render time.
 
 ## Current limitations
 

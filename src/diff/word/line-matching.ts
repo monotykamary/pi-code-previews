@@ -95,7 +95,7 @@ const MAX_CHANGED_LINE_PAIR_CELLS = 1024;
 
 const SPARSE_LINE_MATCHING_POLICY: SparseLineMatchingPolicy = {
   minPositionalFallbackPairScore: MIN_POSITIONAL_FALLBACK_PAIR_SCORE,
-  minHighConfidenceCrossingPairScore: MIN_HIGH_CONFIDENCE_CROSSING_PAIR_SCORE,
+  minChangedLinePairScore: MIN_CHANGED_LINE_PAIR_SCORE,
   competingChangedLineScoreAt,
   isAmbiguousChangedLinePairScore,
   isReciprocalBestChangedLinePair,

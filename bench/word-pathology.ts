@@ -104,6 +104,11 @@ function makeWordCases(): WordCase[] {
       after: `const ${longIdentifier("New", 28)} = target.${longIdentifier("Value", 24)};`,
     },
     {
+      name: "identifier separator deletion",
+      before: "snake_case",
+      after: "snakecase",
+    },
+    {
       name: "wrapper syntax smart-filter noise",
       before: "  .map((item) => item.title)",
       after: "  (item) => item.title",
@@ -117,6 +122,11 @@ function makeWordCases(): WordCase[] {
       name: "extended grapheme refinement",
       before: "const avatar = '👩🏽‍💻';",
       after: "const avatar = '👩🏻‍💻';",
+    },
+    {
+      name: "Unicode comparison smart-filter signal",
+      before: "if (count ≤ limit)",
+      after: "if (count ≥ limit)",
     },
     {
       name: "long non-ASCII grapheme snapping",
@@ -149,6 +159,10 @@ function makePairingCases(): PairingCase[] {
     {
       name: "line pairing unique reordered sparse 100x100",
       ...reorderedPairingDiff(100),
+    },
+    {
+      name: "line pairing medium reordered sparse 100x100",
+      ...mediumReorderedPairingDiff(100),
     },
     {
       name: "line pairing repeated reordered 32x32",
@@ -244,6 +258,14 @@ function reorderedPairingDiff(count: number): { diff: string; lines: number } {
   );
 }
 
+function mediumReorderedPairingDiff(count: number): { diff: string; lines: number } {
+  return pairingDiff(
+    count,
+    (position) => profileLine(position, profilePlacement(position, count), "removed"),
+    (position) => profileLine(count - position - 1, profilePlacement(position, count), "added"),
+  );
+}
+
 function shiftedPairingDiff(count: number): { diff: string; lines: number } {
   const lines = [
     ...Array.from(
@@ -265,6 +287,27 @@ function similarBefore(index: number): string {
 
 function similarAfter(index: number): string {
   return `const value${index} = target.newName${index % 5}(safeInput${index}) ?? fallback${index};`;
+}
+
+function profileLine(logicalIndex: number, placement: string, side: "added" | "removed"): string {
+  const code = profileIdentifierCode(logicalIndex);
+  const changedArguments =
+    side === "removed" ? "oldRecord, legacyOptions" : "newAccount, modernSettings, metadata";
+  return `const profile${code} = build${code}Profile(profile${code}Type, slot("${placement}"), rank("${placement}"), ${changedArguments});`;
+}
+
+function profileIdentifierCode(index: number): string {
+  return `${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(
+    97 + (index % 26),
+  )}`;
+}
+
+function profilePlacement(position: number, count: number): string {
+  if (position * 2 === count - 1) return "center";
+  const index = position * 2 < count - 1 ? position : count - position - 1;
+  return `${position * 2 < count - 1 ? "cold" : "warm"}${profileIdentifierCode(
+    index,
+  ).toLowerCase()}`;
 }
 
 function repeatedBefore(index: number): string {
