@@ -53,8 +53,6 @@ function isSmartSignalToken(token: string): boolean {
 
 const LOW_SIGNAL_SYNTAX_TOKENS = new Set([
   "as",
-  "async",
-  "await",
   "const",
   "else",
   "export",
@@ -63,7 +61,6 @@ const LOW_SIGNAL_SYNTAX_TOKENS = new Set([
   "if",
   "import",
   "let",
-  "return",
   "var",
 ]);
 

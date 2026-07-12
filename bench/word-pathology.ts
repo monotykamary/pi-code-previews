@@ -108,6 +108,21 @@ function makeWordCases(): WordCase[] {
       before: "  .map((item) => item.title)",
       after: "  (item) => item.title",
     },
+    {
+      name: "bounded internal token refinement",
+      before: "fooaabarbbbaz",
+      after: "fooxxbarzzbaz",
+    },
+    {
+      name: "extended grapheme refinement",
+      before: "const avatar = '👩🏽‍💻';",
+      after: "const avatar = '👩🏻‍💻';",
+    },
+    {
+      name: "long non-ASCII grapheme snapping",
+      before: `${"é".repeat(10_000)}Old`,
+      after: `${"é".repeat(10_000)}New`,
+    },
   ];
 }
 
@@ -115,10 +130,26 @@ function makePairingCases(): PairingCase[] {
   return [
     { name: "line pairing exact boundary 32x32", ...pairingDiff(32, similarBefore, similarAfter) },
     {
+      name: "line pairing unique reordered exact 32x32",
+      ...reorderedPairingDiff(32),
+    },
+    {
       name: "line pairing fallback boundary 33x33",
       ...pairingDiff(33, similarBefore, similarAfter),
     },
+    {
+      name: "line pairing unique reordered sparse 33x33",
+      ...reorderedPairingDiff(33),
+    },
+    {
+      name: "line pairing shifted sparse 32x33",
+      ...shiftedPairingDiff(32),
+    },
     { name: "line pairing fallback 100x100", ...pairingDiff(100, similarBefore, similarAfter) },
+    {
+      name: "line pairing unique reordered sparse 100x100",
+      ...reorderedPairingDiff(100),
+    },
     {
       name: "line pairing repeated reordered 32x32",
       ...pairingDiff(32, repeatedBefore, repeatedAfter),
@@ -198,6 +229,32 @@ function pairingDiff(
   const lines = [
     ...Array.from({ length: count }, (_, index) => `- ${index + 1} ${before(index)}`),
     ...Array.from({ length: count }, (_, index) => `+ ${index + 1} ${after(index)}`),
+  ];
+  return { diff: lines.join("\n"), lines: lines.length };
+}
+
+function reorderedPairingDiff(count: number): { diff: string; lines: number } {
+  return pairingDiff(
+    count,
+    (index) => `const item${index} = transform${index}(old${index});`,
+    (index) => {
+      const reversed = count - 1 - index;
+      return `const item${reversed} = transform${reversed}(new${reversed});`;
+    },
+  );
+}
+
+function shiftedPairingDiff(count: number): { diff: string; lines: number } {
+  const lines = [
+    ...Array.from(
+      { length: count },
+      (_, index) => `- ${index + 1} const item${index} = transform${index}(old${index});`,
+    ),
+    "+ 1 const insertedOnly = initializeNewPath();",
+    ...Array.from(
+      { length: count },
+      (_, index) => `+ ${index + 2} const item${index} = transform${index}(new${index});`,
+    ),
   ];
   return { diff: lines.join("\n"), lines: lines.length };
 }

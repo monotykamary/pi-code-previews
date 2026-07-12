@@ -66,6 +66,9 @@ Individual suites cover diff wrapping, edit renderer previews, write/edit diff g
 
 See [docs/word-emphasis.md](docs/word-emphasis.md) for word-emphasis accuracy notes, confidence scoring, telemetry, and golden-corpus workflow.
 
+Use `npm run word:accuracy` for the labeled span/pair accuracy report and
+`npm run bench:word-pathology` for the corresponding performance guardrails.
+
 ## Configuration
 
 Settings are stored globally in Pi's agent config directory:
