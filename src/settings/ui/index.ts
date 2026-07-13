@@ -42,6 +42,14 @@ type SettingsGroupDefinition = {
   ) => SettingItem[];
 };
 
+// Append a › to the label of every item that opens a submenu, so it is
+// obvious which rows drill in (vs. inline value cycling). Mirrors pi-fabric's
+// markDrillIn. Mutates in place to preserve shared item references.
+function markDrillIn(items: SettingItem[]): SettingItem[] {
+  for (const item of items) if (item.submenu) item.label = `${item.label} ›`;
+  return items;
+}
+
 const SETTINGS_CATEGORY_GROUPS: SettingsGroupDefinition[] = [
   {
     name: "appearance",
@@ -86,7 +94,7 @@ export function createSettingsCategoryItems(
       getCurrent,
       onSettingChange,
     );
-  return [
+  return markDrillIn([
     groupItem("appearance"),
     groupItem("outputPreviews"),
     {
@@ -100,7 +108,7 @@ export function createSettingsCategoryItems(
     },
     groupItem("warningsSafety"),
     groupItem("advanced"),
-  ];
+  ]);
 }
 
 function settingsGroupDefinition(name: string): SettingsGroupDefinition {
@@ -201,8 +209,10 @@ function createOutputPreviewItems(
   getCurrent: SettingsProvider,
   onSettingChange: SettingChangeHandler,
 ): SettingItem[] {
-  return OUTPUT_PREVIEW_GROUPS.map((group) =>
-    createSettingsGroupItemFromDefinition(group, current, getCurrent, onSettingChange),
+  return markDrillIn(
+    OUTPUT_PREVIEW_GROUPS.map((group) =>
+      createSettingsGroupItemFromDefinition(group, current, getCurrent, onSettingChange),
+    ),
   );
 }
 
@@ -210,7 +220,7 @@ function createSettingListItems(
   current: CodePreviewSettings,
   ids: readonly SettingsUiItemId[],
 ): SettingItem[] {
-  return ids.map((id) => createSettingItem(current, id));
+  return markDrillIn(ids.map((id) => createSettingItem(current, id)));
 }
 
 function createSettingItem(current: CodePreviewSettings, id: SettingsUiItemId): SettingItem {
