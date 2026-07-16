@@ -1,6 +1,6 @@
 {
   "name": "pi-code-previews",
-  "version": "0.1.35",
+  "version": "0.1.37",
   "description": "Syntax-highlighted previews for pi tool calls.",
   "keywords": [
     "code-preview",
@@ -84,10 +84,10 @@
   "engines": {
     "node": ">=20"
   },
+  "packageManager": "pnpm@11.6.0",
   "pi": {
     "extensions": [
       "./index.ts"
     ]
-  },
-  "packageManager": "pnpm@11.6.0"
+  }
 }
