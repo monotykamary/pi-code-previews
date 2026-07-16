@@ -47,6 +47,14 @@ export function registerHealthCommand(pi: ExtensionAPI): void {
         `Path icons: ${codePreviewSettings.pathIcons}`,
         `Settings file: ${getSettingsPath()}`,
       ];
+      if (ctx.mode !== "tui") {
+        if (!ctx.hasUI) {
+          ctx.ui.notify("/code-preview-health requires a UI (TUI or GUI).", "error");
+          return;
+        }
+        ctx.ui.notify(lines.join("\n"), "info");
+        return;
+      }
       await ctx.ui.custom(
         (_tui, theme, _kb, done) =>
           new HealthPanel(

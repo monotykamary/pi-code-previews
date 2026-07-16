@@ -96,6 +96,7 @@ test("health command renders current settings", async () => {
         rendered = stripAnsi(renderComponent(component));
       },
     },
+    mode: "tui",
   });
 
   assert.match(rendered, /Code preview health/);
@@ -123,6 +124,7 @@ test("settings command updates, saves, and notifies", async () => {
           (list as unknown as SettingsListInternals).onCancel();
         }),
     },
+    mode: "tui",
   });
 
   const saved = JSON.parse(await readFile(join(root, "code-previews.json"), "utf8"));
@@ -139,6 +141,7 @@ test("settings command updates, saves, and notifies", async () => {
           (list as unknown as SettingsListInternals).onCancel();
         }),
     },
+    mode: "tui",
   });
   assert.ok(notifications.some((message) => message.includes("reset to defaults")));
 });
@@ -166,16 +169,16 @@ function restoreEnv(name: string, value: string | undefined): void {
 }
 
 async function loadCommandsOnly(): Promise<
-  Map<string, { handler: (args: string, ctx: { ui: unknown }) => Promise<void> }>
+  Map<string, { handler: (args: string, ctx: { ui: unknown; mode?: string }) => Promise<void> }>
 > {
   const commands = new Map<
     string,
-    { handler: (args: string, ctx: { ui: unknown }) => Promise<void> }
+    { handler: (args: string, ctx: { ui: unknown; mode?: string }) => Promise<void> }
   >();
   await codePreviews({
     registerCommand: (
       name: string,
-      command: { handler: (args: string, ctx: { ui: unknown }) => Promise<void> },
+      command: { handler: (args: string, ctx: { ui: unknown; mode?: string }) => Promise<void> },
     ) => {
       commands.set(name, command);
     },
