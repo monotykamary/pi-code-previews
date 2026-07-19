@@ -144,21 +144,33 @@ function formatToolCallDuration(ms: number): string {
 }
 
 export class TimingPreservedComponent implements Component {
+  private cachedWidth: number | undefined;
+  private cachedRows: string[] | undefined;
+
   constructor(
     readonly component: Component,
     private readonly state: TimingState,
   ) {}
 
   render(width: number): string[] {
-    return this.component.render(width);
+    if (this.cachedWidth === width && this.cachedRows) return this.cachedRows;
+    const rows = this.component.render(width);
+    this.cachedWidth = width;
+    this.cachedRows = rows;
+    return rows;
   }
 
   invalidate(): void {
+    this.cachedWidth = undefined;
+    this.cachedRows = undefined;
     if (!isToolCallTimingOnlyRender(this.state)) this.component.invalidate?.();
   }
 }
 
 class ToolTimingFooter implements Component {
+  private cachedWidth: number | undefined;
+  private cachedRows: string[] | undefined;
+
   constructor(
     private readonly component: Component,
     private readonly footer: string,
@@ -166,10 +178,16 @@ class ToolTimingFooter implements Component {
   ) {}
 
   render(width: number): string[] {
-    return [...this.component.render(width), truncateToWidth(this.footer, width, "")];
+    if (this.cachedWidth === width && this.cachedRows) return this.cachedRows;
+    const rows = [...this.component.render(width), truncateToWidth(this.footer, width, "")];
+    this.cachedWidth = width;
+    this.cachedRows = rows;
+    return rows;
   }
 
   invalidate(): void {
+    this.cachedWidth = undefined;
+    this.cachedRows = undefined;
     if (!isToolCallTimingOnlyRender(this.state)) this.component.invalidate?.();
   }
 }

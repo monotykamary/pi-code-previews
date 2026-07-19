@@ -257,6 +257,52 @@ test("tool timing invalidations reuse previous preview components", () => {
   assert.equal(resultRenders, 2);
 });
 
+test("non-border shell caches completed call and result rows between renders", () => {
+  setCodePreviewSettings({ ...codePreviewSettings, toolCallTiming: true });
+  const shell = createCodePreviewToolShell("on");
+  const state = {};
+  let callRenders = 0;
+  let resultRenders = 0;
+  vi.spyOn(Date, "now").mockReturnValue(1_000);
+
+  const call = shell.renderCall(
+    baseRenderContext(state, { executionStarted: true }),
+    testTheme(),
+    () => ({
+      render: () => {
+        callRenders++;
+        return ["call"];
+      },
+      invalidate: () => undefined,
+    }),
+  );
+  const result = shell.renderResult(
+    baseRenderContext(state, { executionStarted: true, isPartial: false }),
+    testTheme(),
+    () => ({
+      render: () => {
+        resultRenders++;
+        return ["result"];
+      },
+      invalidate: () => undefined,
+    }),
+  );
+
+  call.render(40);
+  call.render(40);
+  result.render(40);
+  result.render(40);
+  assert.equal(callRenders, 1);
+  assert.equal(resultRenders, 1);
+
+  call.invalidate?.();
+  result.invalidate?.();
+  call.render(40);
+  result.render(40);
+  assert.equal(callRenders, 2);
+  assert.equal(resultRenders, 2);
+});
+
 test("border shell caches framed rows between renders", () => {
   const shell = createCodePreviewToolShell("border");
   let renders = 0;
