@@ -39,5 +39,5 @@ export function parseCodePreviewTools(
     const tool = part.trim();
     if (isCodePreviewToolName(tool)) enabled.add(tool);
   }
-  return enabled;
+  return enabled.size > 0 ? enabled : undefined;
 }

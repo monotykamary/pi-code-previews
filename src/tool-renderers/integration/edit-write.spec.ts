@@ -171,6 +171,32 @@ test("registered write renderer hides code previews until expanded", () => {
   }
 });
 
+test("registered write renderer does not label redacted previous content as a new file", () => {
+  process.env.CODE_PREVIEW_TOOLS = "write";
+  const write = findRenderer(registerRenderers(), "write");
+  assert.ok(write.renderResult);
+
+  const rendered = stripAnsi(
+    renderComponent(
+      write.renderResult(
+        {
+          content: [{ type: "text", text: "ok" }],
+          details: { codePreviewBeforeWrite: { kind: "content", byteLength: 6 } },
+        },
+        { expanded: true, isPartial: false },
+        testTheme(),
+        createToolRenderContext({
+          args: { path: "src/a.ts", content: "after" },
+          toolCallId: "tool-redacted-missing-cache",
+        }),
+      ),
+    ),
+  );
+
+  assert.match(rendered, /previous content unavailable/);
+  assert.doesNotMatch(rendered, /New file/);
+});
+
 test("registered write renderer distinguishes blank-only content from empty content", () => {
   process.env.CODE_PREVIEW_TOOLS = "write";
   const write = findRenderer(registerRenderers(), "write");
@@ -188,6 +214,80 @@ test("registered write renderer distinguishes blank-only content from empty cont
 
   assert.doesNotMatch(rendered, /Empty content/);
   assert.match(rendered, /1 line/);
+});
+
+test("registered write result diffs use and invalidate on the write line limit", () => {
+  process.env.CODE_PREVIEW_TOOLS = "write";
+  const previousSettings = cloneCodePreviewSettingsForTest();
+  const write = findRenderer(registerRenderers(), "write");
+  assert.ok(write.renderResult);
+  const before = Array.from({ length: 8 }, (_, index) => `before ${index}`).join("\n");
+  const after = Array.from({ length: 8 }, (_, index) => `after ${index}`).join("\n");
+  const args = { path: "notes.txt", content: after };
+  const result = {
+    content: [{ type: "text", text: "ok" }],
+    details: { codePreviewBeforeWrite: { kind: "content", content: before } },
+  };
+  const state = {};
+
+  try {
+    setCodePreviewSettings({
+      ...codePreviewSettings,
+      editCollapsedLines: "all",
+      writeCollapsedLines: 2,
+    });
+    const first = stripAnsi(
+      renderComponent(
+        write.renderResult(
+          result,
+          { expanded: false, isPartial: false },
+          testTheme(),
+          createToolRenderContext({ args, expanded: false, state }),
+        ),
+      ),
+    );
+    assert.match(first, /Showing 2 of \d+ diff lines/);
+
+    setCodePreviewSettings({ ...codePreviewSettings, writeCollapsedLines: 4 });
+    const second = stripAnsi(
+      renderComponent(
+        write.renderResult(
+          result,
+          { expanded: false, isPartial: false },
+          testTheme(),
+          createToolRenderContext({ args, expanded: false, state }),
+        ),
+      ),
+    );
+    assert.match(second, /Showing 4 of \d+ diff lines/);
+  } finally {
+    setCodePreviewSettings(previousSettings);
+  }
+});
+
+test("registered write result skips pathological whole-file rewrite diffs", () => {
+  process.env.CODE_PREVIEW_TOOLS = "write";
+  const write = findRenderer(registerRenderers(), "write");
+  assert.ok(write.renderResult);
+  const before = Array.from({ length: 2_000 }, (_, index) => `before ${index}`).join("\n");
+  const after = Array.from({ length: 2_000 }, (_, index) => `after ${index}`).join("\n");
+
+  const rendered = stripAnsi(
+    renderComponent(
+      write.renderResult(
+        {
+          content: [{ type: "text", text: "ok" }],
+          details: { codePreviewBeforeWrite: { kind: "content", content: before } },
+        },
+        { expanded: true, isPartial: false },
+        testTheme(),
+        createToolRenderContext({ args: { path: "rewrite.txt", content: after } }),
+      ),
+    ),
+  );
+
+  assert.match(rendered, /diff skipped for complex rewrite/);
+  assert.doesNotMatch(rendered, /Rendering write diff/);
 });
 
 test("registered write execute snapshots previous content inside the file mutation queue", async () => {
@@ -214,8 +314,9 @@ test("registered write execute snapshots previous content inside the file mutati
     });
     await acquiredPromise;
 
+    const toolCallId = "tool-queue";
     const executePromise = write.execute(
-      "tool-1",
+      toolCallId,
       { path: "target.txt", content: "final" },
       undefined,
       undefined,
@@ -224,11 +325,47 @@ test("registered write execute snapshots previous content inside the file mutati
     await delay(10);
     release();
     const [result] = await Promise.all([executePromise, queuedMutation]);
-    const details = (result as { details?: Record<string, unknown> }).details;
-    const before = details?.codePreviewBeforeWrite as { content?: string } | undefined;
+    const details = (result as { details?: unknown }).details;
 
-    assert.equal(before?.content, "queued");
+    assert.doesNotMatch(JSON.stringify(details), /queued/);
+    const rendered = stripAnsi(
+      renderComponent(
+        write.renderResult!(
+          result as never,
+          { expanded: true, isPartial: false },
+          testTheme(),
+          createToolRenderContext({
+            args: { path: "target.txt", content: "final" },
+            isPartial: false,
+            toolCallId,
+          }),
+        ),
+      ),
+    );
+    assert.match(rendered, /queued/);
+    assert.match(rendered, /final/);
     assert.equal(await readFile(file, "utf8"), "final");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("registered write execute reports UTF-8 byte length", async () => {
+  process.env.CODE_PREVIEW_TOOLS = "write";
+  const dir = await mkdtemp(join(tmpdir(), "pi-code-previews-bytes-"));
+  try {
+    const write = findRenderer(registerRenderers(dir), "write");
+    const result = await write.execute!(
+      "tool-unicode",
+      { path: "unicode.txt", content: "é" },
+      undefined,
+      undefined,
+      undefined,
+    );
+    const resultContent = (result as { content: Array<{ type: string; text?: string }> }).content;
+
+    assert.match(resultContent[0]?.text ?? "", /2 bytes/);
+    assert.equal(await readFile(join(dir, "unicode.txt"), "utf8"), "é");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "vitest";
 import { codePreviewSettings, defaultCodePreviewSettings, setCodePreviewSettings } from "./index";
 import { loadCodePreviewSettings } from "./bootstrap";
+import { queueSettingsSave } from "./persistence";
+import { cleanupTestTempDirectories, createTestTempDirectory } from "../testing/temp-directories";
 import {
   extractCodePreviewSettings,
   getSettingsPath,
@@ -16,13 +18,14 @@ const originalPiCodingAgentDir = process.env.PI_CODING_AGENT_DIR;
 const originalHome = process.env.HOME;
 const originalCwd = process.cwd();
 
-afterEach(() => {
+afterEach(async () => {
   if (originalPiCodingAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalPiCodingAgentDir;
   if (originalHome === undefined) delete process.env.HOME;
   else process.env.HOME = originalHome;
   process.chdir(originalCwd);
   setCodePreviewSettings(defaultCodePreviewSettings);
+  await cleanupTestTempDirectories();
 });
 
 test("getSettingsPath uses Pi's agent directory resolution", () => {
@@ -32,7 +35,7 @@ test("getSettingsPath uses Pi's agent directory resolution", () => {
 });
 
 test("saveSettingsToDisk and loadSettingsFromDisk respect PI_CODING_AGENT_DIR", async () => {
-  const configDir = await mkdtemp(join(tmpdir(), "pi-code-previews-settings-"));
+  const configDir = await createTestTempDirectory("pi-code-previews-settings-");
   process.env.PI_CODING_AGENT_DIR = configDir;
 
   await saveSettingsToDisk({ ...defaultCodePreviewSettings, readCollapsedLines: 37 });
@@ -91,7 +94,7 @@ test("extractCodePreviewSettings accepts nested, prefixed, and saved raw setting
 });
 
 test("loadSettingsFromDisk merges settings in precedence order", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-precedence-"));
+  const root = await createTestTempDirectory("pi-code-previews-precedence-");
   const home = join(root, "home");
   const agentDir = join(root, "agent");
   const project = join(root, "project");
@@ -126,7 +129,7 @@ test("loadSettingsFromDisk merges settings in precedence order", async () => {
     pathListCollapsedLines: 44,
   });
 
-  const loaded = await loadSettingsFromDisk({ projectCwd: project });
+  const loaded = await loadSettingsFromDisk({ projectCwd: project, projectTrusted: true });
   assert.equal(loaded?.readCollapsedLines, 16);
   assert.equal(loaded?.writeCollapsedLines, 21);
   assert.equal(loaded?.writeContentPreview, false);
@@ -138,8 +141,62 @@ test("loadSettingsFromDisk merges settings in precedence order", async () => {
   assert.equal(loaded?.pathListCollapsedLines, 44);
 });
 
+test("saving a global change does not copy project defaults into other projects", async () => {
+  const root = await createTestTempDirectory("pi-code-previews-global-overrides-");
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const firstProject = join(root, "first");
+  const secondProject = join(root, "second");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(firstProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 77 },
+  });
+  await writeJson(join(secondProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 22 },
+  });
+
+  const first = await loadSettingsFromDisk({ projectCwd: firstProject, projectTrusted: true });
+  assert.ok(first);
+  await queueSettingsSave({ ...first, shikiTheme: "github-dark" });
+
+  const saved = JSON.parse(await readFile(join(agentDir, "code-previews.json"), "utf8"));
+  assert.deepEqual(saved, { shikiTheme: "github-dark" });
+  const second = await loadSettingsFromDisk({ projectCwd: secondProject, projectTrusted: true });
+  assert.equal(second?.readCollapsedLines, 22);
+  assert.equal(second?.shikiTheme, "github-dark");
+});
+
+test("saving an unrelated change preserves existing explicit global overrides", async () => {
+  const root = await createTestTempDirectory("pi-code-previews-preserve-overrides-");
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const firstProject = join(root, "first");
+  const secondProject = join(root, "second");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(firstProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 77 },
+  });
+  await writeJson(join(secondProject, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 22 },
+  });
+  await writeJson(join(agentDir, "code-previews.json"), { readCollapsedLines: 77 });
+
+  const first = await loadSettingsFromDisk({ projectCwd: firstProject, projectTrusted: true });
+  assert.ok(first);
+  await queueSettingsSave({ ...first, shikiTheme: "github-dark" });
+
+  const saved = JSON.parse(await readFile(join(agentDir, "code-previews.json"), "utf8"));
+  assert.deepEqual(saved, { readCollapsedLines: 77, shikiTheme: "github-dark" });
+  const second = await loadSettingsFromDisk({ projectCwd: secondProject, projectTrusted: true });
+  assert.equal(second?.readCollapsedLines, 77);
+});
+
 test("loadSettingsFromDisk uses process cwd when project cwd is omitted", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-cwd-"));
+  const root = await createTestTempDirectory("pi-code-previews-cwd-");
   const home = join(root, "home");
   const agentDir = join(root, "agent");
   const project = join(root, "project");
@@ -154,12 +211,12 @@ test("loadSettingsFromDisk uses process cwd when project cwd is omitted", async 
     codePreview: { readCollapsedLines: 23 },
   });
 
-  const loaded = await loadSettingsFromDisk();
+  const loaded = await loadSettingsFromDisk({ projectTrusted: true });
   assert.equal(loaded?.readCollapsedLines, 23);
 });
 
 test("loadSettingsFromDisk uses explicit project cwd instead of process cwd", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-project-cwd-"));
+  const root = await createTestTempDirectory("pi-code-previews-project-cwd-");
   const home = join(root, "home");
   const agentDir = join(root, "agent");
   const targetProject = join(root, "target");
@@ -179,13 +236,38 @@ test("loadSettingsFromDisk uses explicit project cwd instead of process cwd", as
     codePreview: { readCollapsedLines: 99, writeCollapsedLines: 88 },
   });
 
-  const loaded = await loadSettingsFromDisk({ projectCwd: targetProject });
+  const loaded = await loadSettingsFromDisk({
+    projectCwd: targetProject,
+    projectTrusted: true,
+  });
   assert.equal(loaded?.readCollapsedLines, 24);
   assert.equal(loaded?.writeCollapsedLines, defaultCodePreviewSettings.writeCollapsedLines);
 });
 
+test("loadCodePreviewSettings only reads project settings when the project is trusted", async () => {
+  const root = await createTestTempDirectory("pi-code-previews-project-trust-");
+  const home = join(root, "home");
+  const agentDir = join(root, "agent");
+  const project = join(root, "project");
+  process.env.HOME = home;
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  await writeJson(join(agentDir, "settings.json"), {
+    codePreview: { readCollapsedLines: 31 },
+  });
+  await writeJson(join(project, ".pi", "settings.json"), {
+    codePreview: { readCollapsedLines: 99 },
+  });
+
+  const untrusted = await loadCodePreviewSettings(project);
+  assert.equal(untrusted.readCollapsedLines, 31);
+
+  const trusted = await loadCodePreviewSettings(project, true);
+  assert.equal(trusted.readCollapsedLines, 99);
+});
+
 test("loadCodePreviewSettings resets to defaults when no settings files exist", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-no-settings-"));
+  const root = await createTestTempDirectory("pi-code-previews-no-settings-");
   const home = join(root, "home");
   const agentDir = join(root, "agent");
   const project = join(root, "project");
@@ -206,7 +288,7 @@ test("loadCodePreviewSettings resets to defaults when no settings files exist", 
 });
 
 test("loadSettingsFromDisk warns on invalid JSON and continues", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-invalid-settings-"));
+  const root = await createTestTempDirectory("pi-code-previews-invalid-settings-");
   const home = join(root, "home");
   const agentDir = join(root, "agent");
   process.env.HOME = home;

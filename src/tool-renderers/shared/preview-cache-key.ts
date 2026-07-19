@@ -21,7 +21,6 @@ export function previewCacheKey(
     codePreviewSettings.syntaxHighlighting ? "syntax" : "plain",
     codePreviewSettings.diffIntensity,
     codePreviewSettings.wordEmphasis,
-    String(codePreviewSettings.editCollapsedLines),
     themeCacheKey(theme),
     source.length,
     hashString(source),
@@ -34,8 +33,13 @@ export function diffPreviewCacheKey(
   path: string,
   expanded: boolean,
   theme: Theme,
+  collapsedLines: number | "all",
 ): string {
-  return [previewCacheKey(kind, source, path, expanded, theme), shikiStatusCacheKey()].join("\0");
+  return [
+    previewCacheKey(kind, source, path, expanded, theme),
+    String(collapsedLines),
+    shikiStatusCacheKey(),
+  ].join("\0");
 }
 
 export function writeCallPreviewCacheKey(

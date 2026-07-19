@@ -8,6 +8,7 @@ const WORD_TOKEN_PATTERN =
   /[$_\p{L}][$_\p{L}\p{N}\p{Mark}]*|\p{N}+(?:\.\p{N}+)?|===|!==|=>|==|!=|<=|>=|&&|\|\||[^\s]/gu;
 const IDENTIFIER_TOKEN_PATTERN = /^[$_\p{L}][$_\p{L}\p{N}\p{Mark}]*$/u;
 const NUMBER_TOKEN_PATTERN = /^\p{N}+(?:\.\p{N}+)?$/u;
+const SYMBOL_TOKEN_PATTERN = /^\p{S}+$/u;
 const MEANINGFUL_OPERATOR_TOKEN_PATTERN =
   /^(?:===|!==|=>|==|!=|<=|>=|&&|\|\||[+\-*\/%<>=!?:~&|^]+)$/;
 const DOMAIN_SEPARATOR_TOKEN_PATTERN = /^[-/:@#]$/;
@@ -33,6 +34,10 @@ export function isIdentifierToken(value: string): boolean {
 
 export function isNumberToken(value: string): boolean {
   return NUMBER_TOKEN_PATTERN.test(value);
+}
+
+export function isSymbolToken(value: string): boolean {
+  return SYMBOL_TOKEN_PATTERN.test(value);
 }
 
 export function isMeaningfulOperatorToken(value: string): boolean {

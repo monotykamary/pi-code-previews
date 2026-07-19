@@ -117,3 +117,36 @@ test("registered read renderer does not classify successful Error-prefixed conte
   assert.match(rendered, /ErrorBoundary/);
   assert.match(rendered, /ok/);
 });
+
+test("registered read renderer separates continuation notices from file content", () => {
+  process.env.CODE_PREVIEW_TOOLS = "read";
+  const read = findRenderer(registerRenderers(), "read");
+  assert.ok(read.renderResult);
+
+  const rendered = stripAnsi(
+    renderComponent(
+      read.renderResult(
+        {
+          content: [
+            {
+              type: "text",
+              text: "const value = 1;\n\n[3 more lines in file. Use offset=2 to continue.]",
+            },
+          ],
+        },
+        { expanded: true, isPartial: false },
+        testTheme(),
+        {
+          args: { path: "src/a.ts", limit: 1 },
+          isError: false,
+          invalidate: () => undefined,
+          state: {},
+        },
+      ),
+    ),
+  );
+
+  assert.match(rendered, /1 │ const value = 1;/);
+  assert.match(rendered, /╰─ 3 more lines in file\. Use offset=2 to continue\./);
+  assert.doesNotMatch(rendered, /│ \[3 more lines/);
+});

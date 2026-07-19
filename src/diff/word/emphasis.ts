@@ -1,7 +1,7 @@
 import type { DiffWordEmphasis } from "../../settings/types";
 import { refinedRangesForChangedTokens } from "./range-refinement";
 import { filterLowSignalWordEmphasis } from "./smart-filter";
-import { collectChangedTokenIndexes } from "./token-alignment";
+import { collectChangedTokenGaps, type ChangedTokenGap } from "./token-alignment";
 import type { ConfidentWordChangeRanges, WordChangeConfidence, WordChangeRanges } from "./types";
 import { wordEmphasisTokens, type WordEmphasisToken } from "./tokens";
 
@@ -49,26 +49,17 @@ export function changedRangesForTokensWithConfidence(
 ): ConfidentWordChangeRanges {
   if (wordEmphasis === "off") return emptyWordChangeRanges();
 
-  const removedTokens = new Set<number>();
-  const addedTokens = new Set<number>();
-  const alignmentConfidence = collectChangedTokenIndexes(
+  const gaps: ChangedTokenGap[] = [];
+  const alignmentConfidence = collectChangedTokenGaps(
     beforeTokens,
     0,
     beforeTokens.length,
     afterTokens,
     0,
     afterTokens.length,
-    {
-      removed: removedTokens,
-      added: addedTokens,
-    },
+    gaps,
   );
-  const ranges = refinedRangesForChangedTokens(
-    beforeTokens,
-    afterTokens,
-    removedTokens,
-    addedTokens,
-  );
+  const ranges = refinedRangesForChangedTokens(before, beforeTokens, after, afterTokens, gaps);
   const confidence: WordChangeConfidence = hasWordChangeRanges(ranges)
     ? alignmentConfidence
     : "low";

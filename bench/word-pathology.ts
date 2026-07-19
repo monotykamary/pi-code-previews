@@ -104,9 +104,34 @@ function makeWordCases(): WordCase[] {
       after: `const ${longIdentifier("New", 28)} = target.${longIdentifier("Value", 24)};`,
     },
     {
+      name: "identifier separator deletion",
+      before: "snake_case",
+      after: "snakecase",
+    },
+    {
       name: "wrapper syntax smart-filter noise",
       before: "  .map((item) => item.title)",
       after: "  (item) => item.title",
+    },
+    {
+      name: "bounded internal token refinement",
+      before: "fooaabarbbbaz",
+      after: "fooxxbarzzbaz",
+    },
+    {
+      name: "extended grapheme refinement",
+      before: "const avatar = '👩🏽‍💻';",
+      after: "const avatar = '👩🏻‍💻';",
+    },
+    {
+      name: "Unicode comparison smart-filter signal",
+      before: "if (count ≤ limit)",
+      after: "if (count ≥ limit)",
+    },
+    {
+      name: "long non-ASCII grapheme snapping",
+      before: `${"é".repeat(10_000)}Old`,
+      after: `${"é".repeat(10_000)}New`,
     },
   ];
 }
@@ -115,10 +140,30 @@ function makePairingCases(): PairingCase[] {
   return [
     { name: "line pairing exact boundary 32x32", ...pairingDiff(32, similarBefore, similarAfter) },
     {
+      name: "line pairing unique reordered exact 32x32",
+      ...reorderedPairingDiff(32),
+    },
+    {
       name: "line pairing fallback boundary 33x33",
       ...pairingDiff(33, similarBefore, similarAfter),
     },
+    {
+      name: "line pairing unique reordered sparse 33x33",
+      ...reorderedPairingDiff(33),
+    },
+    {
+      name: "line pairing shifted sparse 32x33",
+      ...shiftedPairingDiff(32),
+    },
     { name: "line pairing fallback 100x100", ...pairingDiff(100, similarBefore, similarAfter) },
+    {
+      name: "line pairing unique reordered sparse 100x100",
+      ...reorderedPairingDiff(100),
+    },
+    {
+      name: "line pairing medium reordered sparse 100x100",
+      ...mediumReorderedPairingDiff(100),
+    },
     {
       name: "line pairing repeated reordered 32x32",
       ...pairingDiff(32, repeatedBefore, repeatedAfter),
@@ -202,12 +247,67 @@ function pairingDiff(
   return { diff: lines.join("\n"), lines: lines.length };
 }
 
+function reorderedPairingDiff(count: number): { diff: string; lines: number } {
+  return pairingDiff(
+    count,
+    (index) => `const item${index} = transform${index}(old${index});`,
+    (index) => {
+      const reversed = count - 1 - index;
+      return `const item${reversed} = transform${reversed}(new${reversed});`;
+    },
+  );
+}
+
+function mediumReorderedPairingDiff(count: number): { diff: string; lines: number } {
+  return pairingDiff(
+    count,
+    (position) => profileLine(position, profilePlacement(position, count), "removed"),
+    (position) => profileLine(count - position - 1, profilePlacement(position, count), "added"),
+  );
+}
+
+function shiftedPairingDiff(count: number): { diff: string; lines: number } {
+  const lines = [
+    ...Array.from(
+      { length: count },
+      (_, index) => `- ${index + 1} const item${index} = transform${index}(old${index});`,
+    ),
+    "+ 1 const insertedOnly = initializeNewPath();",
+    ...Array.from(
+      { length: count },
+      (_, index) => `+ ${index + 2} const item${index} = transform${index}(new${index});`,
+    ),
+  ];
+  return { diff: lines.join("\n"), lines: lines.length };
+}
+
 function similarBefore(index: number): string {
   return `const value${index} = source.oldName${index % 5}(input${index}) ?? fallback${index};`;
 }
 
 function similarAfter(index: number): string {
   return `const value${index} = target.newName${index % 5}(safeInput${index}) ?? fallback${index};`;
+}
+
+function profileLine(logicalIndex: number, placement: string, side: "added" | "removed"): string {
+  const code = profileIdentifierCode(logicalIndex);
+  const changedArguments =
+    side === "removed" ? "oldRecord, legacyOptions" : "newAccount, modernSettings, metadata";
+  return `const profile${code} = build${code}Profile(profile${code}Type, slot("${placement}"), rank("${placement}"), ${changedArguments});`;
+}
+
+function profileIdentifierCode(index: number): string {
+  return `${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(
+    97 + (index % 26),
+  )}`;
+}
+
+function profilePlacement(position: number, count: number): string {
+  if (position * 2 === count - 1) return "center";
+  const index = position * 2 < count - 1 ? position : count - position - 1;
+  return `${position * 2 < count - 1 ? "cold" : "warm"}${profileIdentifierCode(
+    index,
+  ).toLowerCase()}`;
 }
 
 function repeatedBefore(index: number): string {

@@ -56,6 +56,7 @@
     "bench:edit-rendering": "tsx bench/edit-rendering.ts",
     "bench:write-diff": "tsx bench/write-diff.ts",
     "bench:word-pathology": "tsx bench/word-pathology.ts",
+    "word:accuracy": "tsx bench/word-accuracy.ts",
     "word:spans": "tsx bench/word-emphasis-spans.ts",
     "bench:recommended": "npm run bench:diff-wrap && npm run bench:edit-rendering && npm run bench:write-diff && npm run bench:word-pathology",
     "test": "vitest run",
@@ -70,7 +71,7 @@
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "0.80.6",
     "@earendil-works/pi-tui": "0.80.6",
-    "@types/node": "^20.19.40",
+    "@types/node": "^22.19.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
     "tsdown": "^0.22.0",
@@ -82,7 +83,7 @@
     "@earendil-works/pi-coding-agent": "*"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19.0"
   },
   "packageManager": "pnpm@11.6.0",
   "pi": {

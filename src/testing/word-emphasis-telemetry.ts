@@ -6,7 +6,7 @@ import { analyzeChangedLineBlock } from "../diff/word/change-block";
 import { shouldEmphasizeChangedPair } from "../diff/word/emphasis";
 import type { WordChangeConfidence } from "../diff/word/types";
 
-export type WordEmphasisTelemetry = {
+type WordEmphasisTelemetry = {
   changedBlocks: number;
   changedLines: { removed: number; added: number };
   pairConfidence: Record<WordChangeConfidence, number>;

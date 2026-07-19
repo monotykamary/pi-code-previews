@@ -153,7 +153,8 @@ function cacheRendered(key: string, value: string[]): void {
   renderCache.set(key, { value, size });
   renderCacheChars += size;
   while (renderCache.size > CACHE_LIMIT || renderCacheChars > CACHE_CHAR_LIMIT) {
-    const first = renderCache.keys().next().value as string;
+    const first = renderCache.keys().next().value;
+    if (first === undefined) break;
     deleteCachedRender(first);
   }
 }
@@ -234,8 +235,12 @@ export function normalizeShikiLanguage(lang: string): string {
   return normalizePreviewLanguageAlias(lang);
 }
 
+export function isLightShikiTheme(theme: string): boolean {
+  return shikiThemeTypes.get(theme) === "light";
+}
+
 function normalizeShikiContrast(ansi: string): string {
-  if (shikiThemeTypes.get(codePreviewSettings.shikiTheme) === "light") return ansi;
+  if (isLightShikiTheme(codePreviewSettings.shikiTheme)) return ansi;
   return ansi.replace(/\x1b\[([0-9;]*)m/g, (seq, params: string) =>
     isLowContrastFg(params) ? "\x1b[38;2;139;148;158m" : seq,
   );
@@ -245,7 +250,8 @@ function isLowContrastFg(params: string): boolean {
   if (params === "30" || params === "90" || params === "38;5;0" || params === "38;5;8") return true;
   if (!params.startsWith("38;2;")) return false;
   const [, , r, g, b] = params.split(";").map(Number);
-  if (![r, g, b].every(Number.isFinite)) return false;
+  if (r === undefined || g === undefined || b === undefined || ![r, g, b].every(Number.isFinite))
+    return false;
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   return luminance < 72;
 }

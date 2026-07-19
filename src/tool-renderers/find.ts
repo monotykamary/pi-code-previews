@@ -10,17 +10,17 @@ import { registerPathListTool } from "./shared/path-list-tool";
 export function registerFind(pi: ExtensionAPI, cwd: string) {
   registerPathListTool(pi, cwd, {
     createToolDefinition: createFindToolDefinition,
-    renderCall(args, theme, cwd) {
+    renderCall(args, theme, renderCwd) {
       const pattern = typeof args.pattern === "string" ? args.pattern : "";
       const path = typeof args.path === "string" && args.path ? args.path : ".";
       return new Text(
-        `${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("accent", escapeControlChars(pattern || "*"))} ${theme.fg("muted", "in")} ${renderDisplayPath(path, cwd, theme)}`,
+        `${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("accent", escapeControlChars(pattern || "*"))} ${theme.fg("muted", "in")} ${renderDisplayPath(path, renderCwd, theme)}`,
         0,
         0,
       );
     },
-    resultConfig: (cwd) => ({
-      cwd,
+    resultConfig: (renderCwd) => ({
+      cwd: renderCwd,
       iconMode: codePreviewSettings.pathIcons,
       previewEnabled: codePreviewSettings.findResultPreview,
       collapsedLines: codePreviewSettings.pathListCollapsedLines,

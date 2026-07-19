@@ -88,7 +88,7 @@ try {
       );
     }
 
-    for (const mode of MODES.filter((mode) => mode !== "off")) {
+    for (const mode of MODES.filter((candidateMode) => candidateMode !== "off")) {
       setCodePreviewSettings({ ...codePreviewSettings, wordEmphasis: mode });
       results.push(
         runBench(benchCase.name, "word-ranges", mode, () => {

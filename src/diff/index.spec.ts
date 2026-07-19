@@ -12,6 +12,7 @@ import {
   summarizeDiff,
 } from "./index";
 import { createDiffBackgroundResolver, diffLineBg } from "./background";
+import { parseDiffLine } from "./parse";
 import { wordEmphasisTelemetry } from "../testing/word-emphasis-telemetry";
 import { changedRanges, changedRangesWithConfidence } from "./word/emphasis";
 
@@ -47,6 +48,23 @@ test("summarizeDiff classifies replacements, insertions, and deletions by change
   assert.equal(withExtraLines.insertions, 1);
   assert.equal(withExtraLines.deletions, 1);
   assert.equal(withExtraLines.hunks, 2);
+});
+
+test("parseDiffLine accepts standard body lines but not file headers", () => {
+  assert.deepEqual(parseDiffLine("-old"), { kind: "-", lineNumber: "", content: "old" });
+  assert.deepEqual(parseDiffLine("+new"), { kind: "+", lineNumber: "", content: "new" });
+  assert.deepEqual(parseDiffLine(" context"), {
+    kind: " ",
+    lineNumber: "",
+    content: "context",
+  });
+  assert.deepEqual(parseDiffLine("+  indented"), {
+    kind: "+",
+    lineNumber: "",
+    content: "  indented",
+  });
+  assert.equal(parseDiffLine("--- a/file.ts"), null);
+  assert.equal(parseDiffLine("+++ b/file.ts"), null);
 });
 
 test("plain diff escapes terminal control characters", () => {
@@ -102,6 +120,22 @@ test("full-width diff component wraps long ANSI lines", () => {
   assert.ok(rows.length > 1);
   assert.equal(visibleWidth(rows[0] ?? ""), 30);
   assert.ok(visibleWidth(rows.at(-1) ?? "") <= 30);
+});
+
+test("full-width diff wrapping keeps content when the gutter is wider than the viewport", () => {
+  const diffText = renderPlainDiff("+1 abcdef", testTheme(), 1);
+  const rows = new FullWidthDiffText(diffText, testTheme()).render(3);
+
+  assert.ok(rows.every((row) => visibleWidth(row) <= 3));
+  assert.match(stripAnsi(rows.join("")), /abc/);
+});
+
+test("full-width diff wrapping preserves wide graphemes beside a narrow continuation gutter", () => {
+  const diffText = renderPlainDiff("+1 a😀b", testTheme(), 1);
+  const rows = new FullWidthDiffText(diffText, testTheme()).render(6);
+
+  assert.ok(rows.every((row) => visibleWidth(row) <= 6));
+  assert.match(stripAnsi(rows.join("")), /😀/);
 });
 
 test("diff background reaches box right padding without exceeding child width", () => {
@@ -161,6 +195,7 @@ test("word emphasis uses readable backgrounds with light syntax themes", () => {
   assert.match(rendered, /\x1b\[48;2;216;182;182mold/);
   assert.match(rendered, /\x1b\[48;2;194;209;194mnew/);
   assert.doesNotMatch(rendered, /\x1b\[48;2;(?:148;62;70|64;132;82)m/);
+  assert.doesNotMatch(rendered, /\x1b\[1m(?:old|new)/);
 });
 
 test("word emphasis marks low-overlap one-to-one changed pairs instead of skipping them", () => {

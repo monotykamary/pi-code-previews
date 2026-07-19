@@ -1,5 +1,5 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth, type Component } from "@earendil-works/pi-tui";
+import { visibleWidth, type Component } from "@earendil-works/pi-tui";
 import { positiveEnvInteger } from "../config/env";
 import { wrapAnsiToWidth } from "../shared/terminal-text";
 import { createDiffBackgroundResolver, diffLineBg } from "./background";
@@ -27,17 +27,25 @@ export class FullWidthDiffText implements Component {
   render(width: number): string[] {
     if (this.cachedWidth === width && this.cachedRows) return this.cachedRows;
     const diffBackground = createDiffBackgroundResolver(this.theme);
-    const rows = this.text.split("\n").flatMap((rawLine) => {
+    const rows: string[] = [];
+    for (const rawLine of this.text.split("\n")) {
       const { kind, line } = parseMarkedDiffLine(rawLine);
-      const rows = wrapAnsiToWidth(line, width, DIFF_WRAP_ROWS, continuationPrefix(line));
-      if (!kind) return rows.map((row) => truncateToWidth(row, width, ""));
-
-      return rows.map((row) => {
-        const truncated = truncateToWidth(row, width, "");
-        const padding = " ".repeat(Math.max(0, width - visibleWidth(truncated)));
-        return diffLineBg(kind, truncated + padding, diffBackground);
-      });
-    });
+      const continuation = continuationPrefix(line);
+      const wrappedRows = wrapAnsiToWidth(
+        line,
+        width,
+        DIFF_WRAP_ROWS,
+        visibleWidth(continuation) < width ? continuation : "",
+      );
+      if (!kind) {
+        rows.push(...wrappedRows);
+        continue;
+      }
+      for (const row of wrappedRows) {
+        const padding = " ".repeat(Math.max(0, width - visibleWidth(row)));
+        rows.push(diffLineBg(kind, row + padding, diffBackground));
+      }
+    }
     this.cachedWidth = width;
     this.cachedRows = rows;
     return rows;

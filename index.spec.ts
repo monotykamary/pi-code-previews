@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
@@ -13,6 +12,10 @@ import {
   setCodePreviewSettings,
 } from "./src/settings/index";
 import { renderComponent, stripAnsi, testTheme } from "./src/testing/render";
+import {
+  cleanupTestTempDirectories,
+  createTestTempDirectory,
+} from "./src/testing/temp-directories";
 
 const originalPiCodingAgentDir = process.env.PI_CODING_AGENT_DIR;
 const originalHome = process.env.HOME;
@@ -27,14 +30,15 @@ test("root public API exposes only stable package-author helpers", () => {
   assert.equal(typeof withCodePreviewShell, "function");
 });
 
-afterEach(() => {
+afterEach(async () => {
   restoreEnv("PI_CODING_AGENT_DIR", originalPiCodingAgentDir);
   restoreEnv("HOME", originalHome);
   setCodePreviewSettings(originalSettings);
+  await cleanupTestTempDirectories();
 });
 
 test("extension entrypoint registers commands and session renderer wiring", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-index-"));
+  const root = await createTestTempDirectory("pi-code-previews-index-");
   process.env.PI_CODING_AGENT_DIR = root;
   process.env.HOME = join(root, "home");
   await writeFile(
@@ -83,7 +87,7 @@ test("extension entrypoint registers commands and session renderer wiring", asyn
 });
 
 test("health command renders current settings", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-health-"));
+  const root = await createTestTempDirectory("pi-code-previews-health-");
   process.env.PI_CODING_AGENT_DIR = root;
   process.env.HOME = join(root, "home");
   const commands = await loadCommandsOnly();
@@ -105,7 +109,7 @@ test("health command renders current settings", async () => {
 });
 
 test("settings command updates, saves, and notifies", async () => {
-  const root = await mkdtemp(join(tmpdir(), "pi-code-previews-settings-command-"));
+  const root = await createTestTempDirectory("pi-code-previews-settings-command-");
   process.env.PI_CODING_AGENT_DIR = root;
   process.env.HOME = join(root, "home");
   await mkdir(root, { recursive: true });

@@ -40,6 +40,13 @@ test("CODE_PREVIEW_TOOLS overrides configured renderer settings", () => {
   assert.deepEqual([...getEnabledCodePreviewTools()], ["grep"]);
 });
 
+test("invalid CODE_PREVIEW_TOOLS values fall back to configured renderers", () => {
+  setCodePreviewSettings({ ...defaultCodePreviewSettings, tools: ["bash", "read"] });
+  process.env.CODE_PREVIEW_TOOLS = "gred";
+
+  assert.deepEqual([...getEnabledCodePreviewTools()], ["bash", "read"]);
+});
+
 test("disabled preview settings force required renderers even with CODE_PREVIEW_TOOLS", () => {
   setCodePreviewSettings({
     ...defaultCodePreviewSettings,

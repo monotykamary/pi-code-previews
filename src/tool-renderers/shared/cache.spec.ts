@@ -35,6 +35,7 @@ test("diff preview cache keys include syntax highlighter status", () => {
     "src/a.ts",
     false,
     testTheme(),
+    codePreviewSettings.editCollapsedLines,
   );
 
   assert.match(diffKey, /shiki-(ready|loading)/);

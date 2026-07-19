@@ -62,9 +62,47 @@ export function selectPreviewTextLines(
   text: string,
   limit: number,
 ): { entries: Array<PreviewLineEntry<string>>; shown: number; hidden: number; total: number } {
-  const total = countPreviewTextLines(text);
+  if (!Number.isInteger(limit)) {
+    const total = countPreviewTextLines(text);
+    return {
+      ...collectPreviewEntries(total, limit, (push) => forEachPreviewTextLine(text, push)),
+      total,
+    };
+  }
+
+  const entries: Array<PreviewLineEntry<string>> = [];
+  const split = limit >= 8;
+  const head = split ? Math.ceil(limit * 0.65) : limit;
+  const tailLimit = split ? Math.max(1, limit - head - 1) : 0;
+  const tail: Array<string | undefined> = [];
+  let tailSize = 0;
+  let tailCursor = 0;
+  let total = 0;
+  forEachPreviewTextLine(text, (line, index) => {
+    total++;
+    if (limit <= 0 || index < limit) entries.push({ kind: "line", line, index });
+    if (!split || index < head) return;
+    tail[tailCursor] = line;
+    if (++tailCursor === tailLimit) tailCursor = 0;
+    if (tailSize < tailLimit) tailSize++;
+  });
+
+  if (limit <= 0 || total <= limit) return { entries, shown: total, hidden: 0, total };
+  if (!split) return { entries, shown: limit, hidden: total - limit, total };
+  const hidden = total - head - tailLimit;
+  const selected = entries.slice(0, head);
+  selected.push({ kind: "hidden", hidden });
+  let tailSlot = tailSize === tailLimit ? tailCursor : 0;
+  for (let offset = 0; offset < tailSize; offset++) {
+    const line = tail[tailSlot];
+    if (line === undefined) throw new RangeError(`Missing preview tail line ${offset}`);
+    selected.push({ kind: "line", line, index: total - tailSize + offset });
+    if (++tailSlot === tailLimit) tailSlot = 0;
+  }
   return {
-    ...collectPreviewEntries(total, limit, (push) => forEachPreviewTextLine(text, push)),
+    entries: selected,
+    shown: head + tailLimit,
+    hidden,
     total,
   };
 }

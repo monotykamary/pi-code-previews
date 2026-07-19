@@ -20,3 +20,16 @@ export function getTextContent(
       .join("\n") ?? ""
   );
 }
+
+const READ_CONTINUATION_NOTICE =
+  /^\[(?:Showing lines \d+-\d+ of \d+(?: \([^)]+\))?|\d+ more lines in file)\. Use offset=\d+ to continue\.\]$/;
+
+export function splitReadContinuationNotice(text: string): {
+  content: string;
+  notice?: string;
+} {
+  const match = /^(.*?)(?:\r?\n){2}(\[[^\r\n]+\])$/s.exec(text);
+  const notice = match?.[2];
+  if (!match || !notice || !READ_CONTINUATION_NOTICE.test(notice)) return { content: text };
+  return { content: match[1] ?? "", notice: notice.slice(1, -1) };
+}

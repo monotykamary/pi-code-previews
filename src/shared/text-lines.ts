@@ -18,6 +18,7 @@ export function splitLinesLimited(text: string, limit: number): string[] {
   forEachRawTextLine(text, (line) => {
     lines.push(line);
     if (lines.length >= max) return false;
+    return undefined;
   });
   return lines;
 }

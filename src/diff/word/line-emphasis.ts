@@ -1,21 +1,19 @@
-import { bundledThemesInfo } from "shiki";
 import { codePreviewSettings } from "../../settings/index";
 import type { DiffWordEmphasis } from "../../settings/types";
 import { injectVisibleRanges } from "../../shared/terminal-text";
+import { isLightShikiTheme } from "../../syntax/shiki";
 import type { ParsedDiffLine } from "../parse";
 import { analyzeChangedLineBlock } from "./change-block";
 import { shouldEmphasizeChangedPair } from "./emphasis";
 
-const shikiThemeTypes = new Map(bundledThemesInfo.map((theme) => [theme.id, theme.type]));
-
 export function changedLineEmphasis(
   block: ParsedDiffLine[],
-  wordEmphasis: DiffWordEmphasis,
+  mode: DiffWordEmphasis,
 ): Map<number, { ranges: Array<[number, number]>; kind: "add" | "remove" }> {
   const emphasis = new Map<number, { ranges: Array<[number, number]>; kind: "add" | "remove" }>();
-  if (wordEmphasis === "off") return emphasis;
+  if (mode === "off") return emphasis;
 
-  for (const { pair, ranges } of analyzeChangedLineBlock(block, wordEmphasis).ranges) {
+  for (const { pair, ranges } of analyzeChangedLineBlock(block, mode).ranges) {
     if (!shouldEmphasizeChangedPair(ranges, pair.confidence)) continue;
     emphasis.set(pair.removedIndex, { ranges: ranges.removed, kind: "remove" });
     emphasis.set(pair.addedIndex, { ranges: ranges.added, kind: "add" });
@@ -54,7 +52,7 @@ function findCodeStart(line: string): number {
 }
 
 function wordEmphasis(kind: "add" | "remove"): string {
-  if (shikiThemeTypes.get(codePreviewSettings.shikiTheme) === "light") {
+  if (isLightShikiTheme(codePreviewSettings.shikiTheme)) {
     return kind === "add" ? "\x1b[48;2;194;209;194m" : "\x1b[48;2;216;182;182m";
   }
   return kind === "add" ? "\x1b[48;2;64;132;82m" : "\x1b[48;2;148;62;70m";

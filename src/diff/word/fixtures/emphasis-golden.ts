@@ -1,8 +1,11 @@
 export type WordEmphasisGoldenCase = {
   name: string;
+  lang?: string;
   mode?: "all" | "smart";
   diff: string[];
   expectedSpans: string[][];
+  expectedRanges?: Array<Array<[start: number, end: number]> | undefined>;
+  expectedPairs?: Array<[removedLine: number, addedLine: number]>;
 };
 
 export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
@@ -10,6 +13,7 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
     name: "simple variable rename",
     diff: ["-1 const value = oldValue;", "+1 const value = newValue;"],
     expectedSpans: [["old"], ["new"]],
+    expectedPairs: [[0, 1]],
   },
   {
     name: "compound identifier prefix change",
@@ -23,10 +27,39 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
     expectedSpans: [[], ["="]],
   },
   {
+    name: "smart mode async modifier addition",
+    mode: "smart",
+    diff: ["-1 function loadUser() {", "+1 async function loadUser() {"],
+    expectedSpans: [[], ["async"]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "smart mode await removal",
+    mode: "smart",
+    diff: ["-1 const user = await fetchUser();", "+1 const user = fetchUser();"],
+    expectedSpans: [["await"], []],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "smart mode return addition",
+    mode: "smart",
+    diff: ["-1   value;", "+1   return value;"],
+    expectedSpans: [[], ["return"]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "syntax-colored multi-token insertion",
+    lang: "typescript",
+    diff: ["-1 const result = value;", "+1 const result = value + await transform(nextValue);"],
+    expectedSpans: [[], ["+ await transform(nextValue)"]],
+    expectedPairs: [[0, 1]],
+  },
+  {
     name: "smart mode wrapper noise suppression",
     mode: "smart",
     diff: ["-1   .map((item) => item.title)", "+1   (item) => item.title"],
     expectedSpans: [[], []],
+    expectedPairs: [],
   },
   {
     name: "ambiguous changed line pair suppression",
@@ -36,6 +69,7 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
       "+2 const result = formatTitle(input);",
     ],
     expectedSpans: [[], [], []],
+    expectedPairs: [],
   },
   {
     name: "high-confidence reordered lines",
@@ -46,6 +80,24 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
       "+2 const alphaResult = computeAlpha(next);",
     ],
     expectedSpans: [["input"], ["previous"], ["current"], ["next"]],
+    expectedPairs: [
+      [0, 3],
+      [1, 2],
+    ],
+  },
+  {
+    name: "reciprocal medium-confidence reordered lines",
+    diff: [
+      "-1 alphaKey: computeAlpha(oldInput)",
+      "-2 betaKey: computeBeta(oldSource)",
+      "+1 betaKey: computeBeta(newValue)",
+      "+2 alphaKey: computeAlpha(newResult)",
+    ],
+    expectedSpans: [["oldInput"], ["oldSource"], ["newValue"], ["newResult"]],
+    expectedPairs: [
+      [0, 3],
+      [1, 2],
+    ],
   },
   {
     name: "soft similar replacements inside a changed token group",
@@ -54,6 +106,33 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
       ["old", "+ next"],
       ["new", "- previous"],
     ],
+  },
+  {
+    name: "refinement preserves aligned change gaps",
+    diff: ["-1 a deletedValue b oldValue c", "+1 a b newValue c"],
+    expectedSpans: [["deletedValue", "old"], ["new"]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "bounded text refinement preserves internal runs",
+    diff: ["-1 fooaabarbbbaz", "+1 fooxxbarzzbaz"],
+    expectedSpans: [
+      ["aa", "bb"],
+      ["xx", "zz"],
+    ],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "unicode refinement preserves emoji ZWJ graphemes",
+    diff: ["-1 👩‍💻Foo", "+1 👩‍🔬Foo"],
+    expectedSpans: [["👩‍💻"], ["👩‍🔬"]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "unicode refinement preserves emoji modifier graphemes",
+    diff: ["-1 👍🏻Foo", "+1 👍🏽Foo"],
+    expectedSpans: [["👍🏻"], ["👍🏽"]],
+    expectedPairs: [[0, 1]],
   },
   {
     name: "route version inside a quoted path",
@@ -118,6 +197,16 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
       ["7", "0"],
       ["8", "4"],
     ],
+    expectedRanges: [
+      [
+        [14, 15],
+        [18, 19],
+      ],
+      [
+        [14, 15],
+        [18, 19],
+      ],
+    ],
   },
   {
     name: "jsx prop and child text changes",
@@ -158,5 +247,35 @@ export const wordEmphasisGoldenCases: WordEmphasisGoldenCase[] = [
       [],
       [". Project settings override global settings, and the package settings file overrides both"],
     ],
+  },
+  {
+    name: "identifier separator deletion highlights only the separator",
+    diff: ["-1 snake_case", "+1 snakecase"],
+    expectedSpans: [["_"], []],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "smart mode preserves extended pictograph replacement",
+    mode: "smart",
+    diff: ["-1 👩🏽‍💻Foo", "+1 👩🏻‍💻Foo"],
+    expectedSpans: [["👩🏽‍💻"], ["👩🏻‍💻"]],
+    expectedRanges: [[[0, 7]], [[0, 7]]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "smart mode preserves one-sided extended pictograph",
+    mode: "smart",
+    diff: ["-1 Status:", "+1 Status: 👩🏽‍💻"],
+    expectedSpans: [[], ["👩🏽‍💻"]],
+    expectedRanges: [[], [[8, 15]]],
+    expectedPairs: [[0, 1]],
+  },
+  {
+    name: "smart mode preserves Unicode comparison operators",
+    mode: "smart",
+    diff: ["-1 if (count ≤ limit)", "+1 if (count ≥ limit)"],
+    expectedSpans: [["≤"], ["≥"]],
+    expectedRanges: [[[10, 11]], [[10, 11]]],
+    expectedPairs: [[0, 1]],
   },
 ];
