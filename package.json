@@ -69,8 +69,8 @@
     "shiki": "^4.0.2"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.84.2",
-    "@earendil-works/pi-tui": "0.84.2",
+    "@earendil-works/pi-coding-agent": "0.84.3",
+    "@earendil-works/pi-tui": "0.84.3",
     "@types/node": "^22.19.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
