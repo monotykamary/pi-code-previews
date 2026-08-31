@@ -85,7 +85,6 @@
   "engines": {
     "node": ">=22.19.0"
   },
-  "packageManager": "pnpm@11.20.0",
   "pi": {
     "extensions": [
       "./index.ts"
