@@ -1,6 +1,6 @@
 {
   "name": "pi-code-previews",
-  "version": "0.1.44",
+  "version": "0.1.45",
   "description": "Syntax-highlighted previews for pi tool calls.",
   "keywords": [
     "code-preview",
@@ -69,8 +69,8 @@
     "shiki": "^4.0.2"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.85.0",
-    "@earendil-works/pi-tui": "0.85.0",
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-tui": "0.85.1",
     "@types/node": "^22.19.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
