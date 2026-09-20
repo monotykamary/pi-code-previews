@@ -1,4 +1,8 @@
-import type { ExtensionAPI, ReadToolOptions } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentToolResult,
+  ExtensionAPI,
+  ReadToolOptions,
+} from "@earendil-works/pi-coding-agent";
 import { createReadToolDefinition, getLanguageFromPath } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { renderDisplayPath } from "../paths/display";
@@ -12,6 +16,8 @@ import { getPathArg, getReadStartLine } from "../tool-data/args";
 import { getTextContent, isTruncated, splitReadContinuationNotice } from "../tool-data/results";
 import { renderContentPreview } from "./shared/content-preview";
 import { renderHiddenPreviewPrelude, renderResultPrelude } from "./shared/result-prelude";
+
+type ToolResultContentPart = AgentToolResult<unknown>["content"][number];
 
 export function registerRead(pi: ExtensionAPI, cwd: string, options?: ReadToolOptions) {
   const originalRead = createReadToolDefinition(cwd, options);
@@ -52,7 +58,7 @@ export function registerRead(pi: ExtensionAPI, cwd: string, options?: ReadToolOp
 
         // Pi already renders image content parts natively. Avoid emitting terminal image
         // escape sequences here; show only a compact note beside Pi's image renderer.
-        if (result.content?.some((part) => part.type === "image")) {
+        if (result.content?.some((part: ToolResultContentPart) => part.type === "image")) {
           return new Text(
             theme.fg("dim", escapeControlChars(firstText.replace(/^Read image file/i, "image"))),
             0,
