@@ -45,6 +45,9 @@ export function registerToolRenderers(
   const toolOptions =
     options.toolOptions ?? getBuiltinToolOptions(cwd, options.projectTrusted ?? false);
   const activePreviewTools = new Set<CodePreviewToolName>();
+  // Pi 0.99 activates direct tools during registerTool(), before the later sync.
+  // Remember ownership now so disabling a preview can undo only our additions.
+  const previouslyActive = new Set(pi.getActiveTools?.() ?? []);
 
   for (const tool of ALL_CODE_PREVIEW_TOOLS) {
     if (!enabledTools.has(tool)) continue;
@@ -61,6 +64,7 @@ export function registerToolRenderers(
     }
 
     TOOL_RENDERER_REGISTRATIONS[tool](pi, cwd, toolOptions);
+    if (!previouslyActive.has(tool)) options.activatedTools?.add(tool);
     options.registeredTools?.add(tool);
     activePreviewTools.add(tool);
     setCodePreviewToolStatus(tool, { state: "active" });

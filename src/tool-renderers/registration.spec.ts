@@ -33,6 +33,28 @@ test("renderer registration activates enabled preview tool overrides", () => {
   assert.equal(formatActiveCodePreviewTools(), "grep, find, ls");
 });
 
+test("registration remembers additions when Pi activates a direct tool synchronously", () => {
+  process.env.CODE_PREVIEW_TOOLS = "grep";
+  let activeTools = ["fabric_exec", "read"];
+  const activatedTools = new Set<CodePreviewToolName>();
+  const registeredTools = new Set<CodePreviewToolName>();
+  const pi = {
+    getActiveTools: () => activeTools,
+    setActiveTools: (tools: string[]) => {
+      activeTools = tools;
+    },
+    registerTool: (tool: { name: string }) => {
+      activeTools = [...activeTools, tool.name];
+    },
+  };
+  const options = { activatedTools, registeredTools, toolOptions: {} };
+  registerToolRenderers(pi as never, "/tmp/project", options);
+  assert.deepEqual([...activatedTools], ["grep"]);
+  process.env.CODE_PREVIEW_TOOLS = "none";
+  registerToolRenderers(pi as never, "/tmp/project", options);
+  assert.deepEqual(activeTools, ["fabric_exec", "read"]);
+});
+
 test("renderer registration removes previously activated previews when disabled", () => {
   const registeredTools = new Set<CodePreviewToolName>();
   const activatedTools = new Set<CodePreviewToolName>();

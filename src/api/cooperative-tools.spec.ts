@@ -99,6 +99,45 @@ test("withCodePreviewShell leaves self-shell tools untouched by default", () => 
   assert.notEqual(withCodePreviewShell(tool, { mode: "border", preserveSelfShell: false }), tool);
 });
 
+test("withCodePreviewShell preserves Pi 0.99 Fabric-style exposure and loadout hooks", () => {
+  const hiddenDeclarations = ["grep", "fovea_focus", "contour_review"];
+  const prepareLoadout: NonNullable<ToolDefinition["prepareLoadout"]> = () => ({
+    hiddenDeclarations,
+  });
+  const tool: ToolDefinition = {
+    name: "fabric_exec",
+    label: "Fabric",
+    description: "Orchestrator",
+    parameters: { type: "object", properties: {} },
+    exposure: "model-only",
+    prepareLoadout,
+    namespace: { name: "fabric", description: "Orchestration" },
+    annotations: { readOnlyHint: false },
+    async execute() {
+      return { content: [], details: undefined };
+    },
+  };
+  for (const mode of ["border", "off"] as const) {
+    const wrapped = withCodePreviewShell(tool, { mode });
+    assert.equal(wrapped.exposure, "model-only");
+    assert.equal(wrapped.prepareLoadout, prepareLoadout);
+    assert.equal(wrapped.namespace, tool.namespace);
+    assert.equal(wrapped.annotations, tool.annotations);
+    assert.deepEqual(
+      wrapped.prepareLoadout?.({
+        declared: [],
+        callable: [],
+        registered: [],
+        getExposure: () => "direct",
+        getNamespace: () => undefined,
+      }),
+      {
+        hiddenDeclarations: ["grep", "fovea_focus", "contour_review"],
+      },
+    );
+  }
+});
+
 function textComponent(text: string): Component {
   return {
     render: () => [text],

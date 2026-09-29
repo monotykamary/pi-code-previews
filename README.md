@@ -27,6 +27,8 @@ _Every `bash`, `read`, `write`, `edit`, `grep`, `find`, and `ls` output — enha
 
 ## Install
 
+**0.1.48 compatibility:** tested against Pi 0.99.0. Pi coding-agent and TUI are host-provided wildcard peers and excluded from bundles. Preview registration preserves native codemode/Fabric declaration hiding, skips tools owned by other extensions (including Fovea replace-mode grep), and tracks activation ownership when previews are disabled. Run the test suite with `npm test` on Node; Bun-executed Vitest can mis-tokenize Shiki's WASM grammar.
+
 Install from npm:
 
 ```bash
