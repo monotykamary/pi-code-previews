@@ -17,9 +17,9 @@ import type { CodePreviewToolName } from "../tools/names";
 
 preserveCodePreviewToolsEnv();
 
-test("Pi 0.99 auto-activation ownership and codemode-only declarations survive preview registration", async () => {
-  assert.equal(VERSION, "0.99.0");
-  const root = await mkdtemp(join(tmpdir(), "previews-pi99-"));
+test("Pi 1.0 auto-activation ownership and codemode-only declarations survive preview registration", async () => {
+  assert.equal(VERSION, "1.0.0");
+  const root = await mkdtemp(join(tmpdir(), "previews-pi1-"));
   // Restore a deterministic parent call through the authoritative session store.
   // No provider, credentials, or network is involved.
   const sessionManager = SessionManager.inMemory(root);
@@ -69,7 +69,7 @@ test("Pi 0.99 auto-activation ownership and codemode-only declarations survive p
   });
   let session: Awaited<ReturnType<typeof createAgentSession>>["session"] | undefined;
   try {
-    await writeFile(join(root, "entry.ts"), "export const migration = 99;\n");
+    await writeFile(join(root, "entry.ts"), "export const migration = 100;\n");
     await loader.reload();
     assert.deepEqual(loader.getExtensions().errors, []);
     ({ session } = await createAgentSession({
