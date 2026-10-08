@@ -130,6 +130,7 @@ test("withCodePreviewShell preserves Pi 0.99 Fabric-style exposure and loadout h
         registered: [],
         getExposure: () => "direct",
         getNamespace: () => undefined,
+        getPromptGuidelines: () => [],
       }),
       {
         hiddenDeclarations: ["grep", "fovea_focus", "contour_review"],

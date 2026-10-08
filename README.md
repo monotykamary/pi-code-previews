@@ -22,12 +22,13 @@ _Every `bash`, `read`, `write`, `edit`, `grep`, `find`, and `ls` output — enha
 - Readable `grep` results grouped by file.
 - Compact `find` and `ls` path lists with optional icons.
 - Optional visual warnings for risky-looking shell commands and secret-looking output.
-- Tool call duration timing in result footers or border frames.
+- Tool call duration timing in result footers or border frames, using Pi's recorded execution duration after session reload.
+- Native `outputPad` support for self-rendered tool shells without double-padding Pi-owned shells.
 - Configurable themes, line counts, icons, and highlighting behavior.
 
 ## Install
 
-**0.1.49 compatibility:** tested against Pi 1.0.0. Pi coding-agent and TUI are host-provided wildcard peers and excluded from bundles. Preview registration preserves native codemode/Fabric declaration hiding, skips tools owned by other extensions (including Fovea replace-mode grep), and tracks activation ownership when previews are disabled. Run the test suite with `npm test` on Node; Bun-executed Vitest can mis-tokenize Shiki's WASM grammar.
+**Pi compatibility:** tested against Pi 1.1.0. Pi coding-agent and TUI are host-provided wildcard peers and excluded from bundles. Preview registration preserves native codemode/Fabric declaration hiding, skips tools owned by other extensions (including Fovea replace-mode grep), and tracks activation ownership when previews are disabled. Run the test suite with `npm test` on Node; Bun-executed Vitest can mis-tokenize Shiki's WASM grammar.
 
 Install from npm:
 

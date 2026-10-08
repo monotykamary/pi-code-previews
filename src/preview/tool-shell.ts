@@ -16,6 +16,7 @@ import {
   unwrapTimingComponent,
 } from "./tool-timing";
 import { codePreviewSettings, type ToolCallBackgroundMode } from "../settings/index";
+import { padToolComponent, unwrapToolPadding } from "./tool-padding";
 
 export {
   hiddenPreviewExpandHintForShell,
@@ -30,6 +31,8 @@ interface PreviewRenderContext<TState, TArgs> {
   state: TState;
   cwd: string;
   executionStarted: boolean;
+  durationMs?: number;
+  outputPad?: number;
   argsComplete: boolean;
   isPartial: boolean;
   expanded: boolean;
@@ -56,8 +59,19 @@ export function createCodePreviewToolShell(
 ): CodePreviewToolShell {
   return {
     renderShell: mode === "on" ? "default" : "self",
-    renderCall: (context, theme, render) => renderCodePreviewCall(mode, context, theme, render),
-    renderResult: (context, theme, render) => renderCodePreviewResult(mode, context, theme, render),
+    renderCall: (context, theme, render) => {
+      const inner = context && {
+        ...context,
+        lastComponent: unwrapToolPadding(context.lastComponent),
+      };
+      const component = renderCodePreviewCall(mode, inner, theme, render);
+      return padToolComponent(component, mode === "on" ? 0 : context?.outputPad);
+    },
+    renderResult: (context, theme, render) => {
+      const inner = { ...context, lastComponent: unwrapToolPadding(context.lastComponent) };
+      const component = renderCodePreviewResult(mode, inner, theme, render);
+      return padToolComponent(component, mode === "on" ? 0 : context.outputPad);
+    },
   };
 }
 

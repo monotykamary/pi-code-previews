@@ -17,8 +17,8 @@ import type { CodePreviewToolName } from "../tools/names";
 
 preserveCodePreviewToolsEnv();
 
-test("Pi 1.0 auto-activation ownership and codemode-only declarations survive preview registration", async () => {
-  assert.equal(VERSION, "1.0.0");
+test("Pi 1.1 auto-activation ownership and codemode-only declarations survive preview registration", async () => {
+  assert.equal(VERSION, "1.1.0");
   const root = await mkdtemp(join(tmpdir(), "previews-pi1-"));
   // Restore a deterministic parent call through the authoritative session store.
   // No provider, credentials, or network is involved.

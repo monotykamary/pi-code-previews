@@ -5,6 +5,7 @@ import { codePreviewSettings } from "../settings/index";
 type ToolTimingUpdateContext = {
   state: unknown;
   executionStarted: boolean;
+  durationMs?: number;
   isPartial: boolean;
   invalidate: () => void;
 };
@@ -67,6 +68,13 @@ export function updateToolCallTiming<TContext extends ToolTimingUpdateContext>(
   ) {
     state.codePreviewTimingStartedAt = Date.now();
     state.codePreviewTimingEndedAt = undefined;
+  }
+
+  // Pi persists execution time with the final result, including resumed sessions.
+  if (context.isPartial === false && context.durationMs !== undefined) {
+    clearToolCallTimingInterval(state);
+    if (options.formatLabel === false) return undefined;
+    return { label: `Took ${formatToolCallDuration(context.durationMs)}` };
   }
 
   const startedAt = state.codePreviewTimingStartedAt;

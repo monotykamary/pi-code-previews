@@ -20,6 +20,8 @@ export interface TestToolRenderContext {
   argsComplete: boolean;
   cwd: string;
   executionStarted: boolean;
+  durationMs: number | undefined;
+  outputPad: number;
   expanded: boolean;
   invalidate: () => void;
   isError: boolean;
@@ -42,6 +44,8 @@ export function createToolRenderContext(
     argsComplete: true,
     cwd: "/tmp/project",
     executionStarted: false,
+    durationMs: undefined,
+    outputPad: 0,
     expanded: true,
     invalidate: () => undefined,
     isError: false,

@@ -43,6 +43,70 @@ test("non-border shell appends tool timing to result footer", () => {
   assert.match(stripAnsi(renderComponent(result)), /result\n╰─ Took 1\.2s/);
 });
 
+test.each(["on", "off", "border"] as const)(
+  "%s shell uses persisted Pi execution time after resume",
+  (mode) => {
+    setCodePreviewSettings({ ...codePreviewSettings, toolCallTiming: true });
+    const shell = createCodePreviewToolShell(mode);
+    const state = {};
+    const theme = testTheme();
+    const context = baseRenderContext(state, { isPartial: false, durationMs: 1_234 });
+    const call = shell.renderCall(context, theme, () => textComponent("call"));
+    const result = shell.renderResult(context, theme, () => textComponent("result"));
+    assert.match(stripAnsi(renderComponent(mode === "border" ? call : result, 40)), /Took 1\.2s/);
+  },
+);
+
+test("persisted execution time overrides live wall-clock timing", () => {
+  setCodePreviewSettings({ ...codePreviewSettings, toolCallTiming: true });
+  const shell = createCodePreviewToolShell("off");
+  const state = {};
+  vi.spyOn(Date, "now").mockReturnValue(1_000);
+  shell.renderCall(baseRenderContext(state, { executionStarted: true }), testTheme(), () =>
+    textComponent("call"),
+  );
+  vi.mocked(Date.now).mockReturnValue(50_000);
+  const result = shell.renderResult(
+    baseRenderContext(state, { executionStarted: true, isPartial: false, durationMs: 0 }),
+    testTheme(),
+    () => textComponent("result"),
+  );
+  assert.match(stripAnsi(renderComponent(result)), /Took 0ms/);
+});
+
+test.each(["off", "border"] as const)("%s shell applies Pi outputPad once", (mode) => {
+  const shell = createCodePreviewToolShell(mode);
+  const state = {};
+  const theme = testTheme();
+  let availableWidth = 0;
+  const child = {
+    render(width: number) {
+      availableWidth = width;
+      return ["x"];
+    },
+    invalidate() {},
+  };
+  const context = baseRenderContext(state, { isPartial: false, outputPad: 2 });
+  const call = shell.renderCall(context, theme, () => child);
+  const rows = call.render(30);
+  assert.ok(rows.every((row) => row.startsWith("  ") && row.endsWith("  ")));
+  if (mode === "off") assert.equal(availableWidth, 26);
+  const again = shell.renderCall({ ...context, lastComponent: call }, theme, () => child);
+  assert.deepEqual(again.render(30), rows);
+  assert.doesNotThrow(() => again.render(1));
+  assert.deepEqual(again.render(0), []);
+  const result = shell.renderResult(context, theme, () => textComponent("result"));
+  if (mode === "border") assert.equal(renderComponent(result), "");
+});
+
+test("default shell leaves Pi-owned output padding to the host", () => {
+  const shell = createCodePreviewToolShell("on");
+  const call = shell.renderCall(createToolRenderContext({ outputPad: 2 }), testTheme(), () =>
+    textComponent("call"),
+  );
+  assert.equal(renderComponent(call), "call");
+});
+
 test("non-border shell does not show running tool timing on the call", () => {
   setCodePreviewSettings({ ...codePreviewSettings, toolCallTiming: true });
   const shell = createCodePreviewToolShell("on");
