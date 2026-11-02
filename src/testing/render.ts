@@ -1,4 +1,4 @@
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition, Theme } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
 import {
   cloneCodePreviewSettings,
@@ -15,6 +15,8 @@ export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderCall"]>>[2];
+
 export interface TestToolRenderContext {
   args: Record<string, unknown>;
   argsComplete: boolean;
@@ -24,6 +26,8 @@ export interface TestToolRenderContext {
   outputPad: number;
   expanded: boolean;
   invalidate: () => void;
+  keyText: ToolRenderContext["keyText"];
+  keyHint: ToolRenderContext["keyHint"];
   isError: boolean;
   isPartial: boolean;
   lastComponent: Component | undefined;
@@ -48,6 +52,8 @@ export function createToolRenderContext(
     outputPad: 0,
     expanded: true,
     invalidate: () => undefined,
+    keyText: () => "ctrl+e",
+    keyHint: (_action, description) => `ctrl+e ${description}`,
     isError: false,
     isPartial: true,
     lastComponent: undefined,
