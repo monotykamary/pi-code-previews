@@ -1,6 +1,6 @@
 {
   "name": "pi-code-previews",
-  "version": "0.1.52",
+  "version": "0.1.53",
   "description": "Syntax-highlighted previews for pi tool calls.",
   "keywords": [
     "code-preview",
